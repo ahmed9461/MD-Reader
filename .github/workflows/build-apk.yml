@@ -22,7 +22,10 @@ jobs:
           set -euo pipefail
           cat > /tmp/mainparts.sha256 <<'EOF'
           aefb514e89918ba107575ae5428a02f4735589a724c5ad4970efff90ba3b34e9  .src-parts/MainActivity.java.b64.00
-          4334ff28998ffbfcaf6851cde62a692208d0962a1d7e3a7a95a18c6a83df4a76  .src-parts/MainActivity.java.b64.01
+          873990f285873da5c4e04be035b53ac398cadaad5f91a58f8460282d7737d51f  .src-parts/MainActivity.java.b64.01a
+          5881eb1c59c14bcf8d69d1d6a3e867d09744309c6648e3ed572a6c6aa9b1809e  .src-parts/MainActivity.java.b64.01b
+          5c619c1f5295c8a15714f84444c2887bca93ddbf5c1d8e0ce50a1f53af9c3bbf  .src-parts/MainActivity.java.b64.01c
+          521e171e83919d6f62657eebbdf30206993ad89a6494dd0be21e48426345b5cc  .src-parts/MainActivity.java.b64.01d
           fd0a79f1f0e83d9e657fab3aa014379c1f8e2a3a69d6327e42dd98df70ba1492  .src-parts/MainActivity.java.b64.02
           2c8e2f0a5db70e00abf0e8adf5e750ee10b45f3655bf7e5f990e558d2fecd530  .src-parts/MainActivity.java.b64.03
           5c793d85ff71230e8edf236c49ab3f28fd3b0bae8a0b6899186ee64fb1513cf2  .src-parts/MainActivity.java.b64.04
