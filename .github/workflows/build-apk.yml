@@ -16,10 +16,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Reconstruct MainActivity source
+      - name: Verify and reconstruct MainActivity source
         shell: bash
         run: |
           set -euo pipefail
+          cat > /tmp/mainparts.sha256 <<'EOF'
+          aefb514e89918ba107575ae5428a02f4735589a724c5ad4970efff90ba3b34e9  .src-parts/MainActivity.java.b64.00
+          4334ff28998ffbfcaf6851cde62a692208d0962a1d7e3a7a95a18c6a83df4a76  .src-parts/MainActivity.java.b64.01
+          fd0a79f1f0e83d9e657fab3aa014379c1f8e2a3a69d6327e42dd98df70ba1492  .src-parts/MainActivity.java.b64.02
+          2c8e2f0a5db70e00abf0e8adf5e750ee10b45f3655bf7e5f990e558d2fecd530  .src-parts/MainActivity.java.b64.03
+          5c793d85ff71230e8edf236c49ab3f28fd3b0bae8a0b6899186ee64fb1513cf2  .src-parts/MainActivity.java.b64.04
+          ddf82d459a49623f1c666f55696e6d46f67245ce6c1a2cd256585e28a92dbe09  .src-parts/MainActivity.java.b64.05
+          ca2517d7a1a262fae550d5911cd4e990ba4f006f4f74f2916125095c38c2ae20  .src-parts/MainActivity.java.b64.06
+          460840826d47cbeee80f8a75b4cd341460840143a10c6cfc9a17bfa6af3ac8d6  .src-parts/MainActivity.java.b64.07
+          3ecb43e2d2b097938f18e2976255baa0f1e9ecf49933bb4d04724e885a514510  .src-parts/MainActivity.java.b64.08
+          EOF
+          sha256sum --check --strict /tmp/mainparts.sha256
           mkdir -p app/src/main/java/app/mdreader/mobile
           cat .src-parts/MainActivity.java.b64.* | base64 --decode > app/src/main/java/app/mdreader/mobile/MainActivity.java
           test -s app/src/main/java/app/mdreader/mobile/MainActivity.java
