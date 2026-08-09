@@ -16,3 +16,5 @@ Android Markdown reader and editor focused on correct Arabic RTL and English LTR
 ## APK build
 
 GitHub Actions workflow `Build MD Reader APK` rebuilds the pinned source package, fetches pinned open-source renderer assets, runs smoke tests, builds the Android debug APK, verifies it, and uploads it as the `MD-Reader-v0.1.0-debug` artifact.
+
+Source package integrity was verified before the current build.
