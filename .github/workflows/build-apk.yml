@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify and reconstruct v0.3 MainActivity
+      - name: Reconstruct and patch v0.3.1 MainActivity
         shell: bash
         run: |
           set -euo pipefail
@@ -29,11 +29,16 @@ jobs:
           sha256sum --check --strict /tmp/v03parts.sha256
           mkdir -p app/src/main/java/app/mdreader/mobile
           cat .src-v03/MainActivity.java.gz.b64.* | base64 --decode | gzip -dc > app/src/main/java/app/mdreader/mobile/MainActivity.java
-          test -s app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q "public class MainActivity" app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q "ApiKeyStore" app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q "translationSettings" app/src/main/java/app/mdreader/mobile/MainActivity.java
-          echo "ca2b495d74e56663a815641e793c750d29643f612a2ea50fc2164ddec52ca04f  app/src/main/java/app/mdreader/mobile/MainActivity.java" | sha256sum --check --strict
+          echo 'ca2b495d74e56663a815641e793c750d29643f612a2ea50fc2164ddec52ca04f  app/src/main/java/app/mdreader/mobile/MainActivity.java' | sha256sum --check --strict
+          patch -p1 < .ci/v0.3.1-bottom-sheet.patch
+          echo '051a55078d3dbecaca37628bb1a8eca0bf5cd305c1fb7472041e1eba2bd331bd  app/src/main/java/app/mdreader/mobile/MainActivity.java' | sha256sum --check --strict
+          grep -q 'p.setVisibility(View.INVISIBLE)' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'w.setWindowAnimations(0)' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          ! grep -q 'p.setTranslationY(getResources().getDisplayMetrics().heightPixels)' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q '@mipmap/ic_launcher' app/src/main/AndroidManifest.xml
+          grep -q '@drawable/ic_launcher_foreground' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          grep -q '<monochrome' app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml
+          test -s app/src/main/res/drawable/ic_launcher_monochrome.xml
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -81,15 +86,23 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Verify APK
+      - name: Verify APK and launcher resources
+        shell: bash
         run: |
-          test -s app/build/outputs/apk/debug/app-debug.apk
-          sha256sum app/build/outputs/apk/debug/app-debug.apk
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          sha256sum "$APK"
+          unzip -l "$APK" > /tmp/apk-list.txt
+          grep -q 'res/mipmap-anydpi-v26/ic_launcher.xml' /tmp/apk-list.txt
+          grep -q 'res/mipmap-anydpi-v33/ic_launcher.xml' /tmp/apk-list.txt
+          grep -q 'res/drawable/ic_launcher_foreground.xml' /tmp/apk-list.txt
+          grep -q 'res/drawable/ic_launcher_monochrome.xml' /tmp/apk-list.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MD-Reader-v0.3.0-debug
+          name: MD-Reader-v0.3.1-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
