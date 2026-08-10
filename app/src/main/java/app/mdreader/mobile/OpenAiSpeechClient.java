@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -110,7 +111,10 @@ final class OpenAiSpeechClient {
         byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
         connection.setFixedLengthStreamingMode(payload.length);
         try {
-            connection.getOutputStream().write(payload);
+            try (OutputStream request = connection.getOutputStream()) {
+                request.write(payload);
+                request.flush();
+            }
             int status = connection.getResponseCode();
             if (status < 200 || status >= 300) {
                 String detail = readSmall(connection.getErrorStream());
@@ -174,7 +178,10 @@ final class OpenAiSpeechClient {
 
     private static String friendlyError(int status, String raw) {
         String message = "";
-        try { message = new JSONObject(raw).optJSONObject("error").optString("message", ""); } catch (Exception ignored) {}
+        try {
+            JSONObject error = new JSONObject(raw).optJSONObject("error");
+            if (error != null) message = error.optString("message", "");
+        } catch (Exception ignored) {}
         if (status == 401) return "مفتاح OpenAI غير صالح أو انتهت صلاحيته";
         if (status == 429) return "تم تجاوز حد OpenAI أو الرصيد المتاح للصوت";
         if (status >= 500) return "خدمة OpenAI الصوتية غير متاحة مؤقتًا";
