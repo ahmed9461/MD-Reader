@@ -1,0 +1,48 @@
+--- a/app/src/main/java/app/mdreader/mobile/MainActivity.java
++++ b/app/src/main/java/app/mdreader/mobile/MainActivity.java
+@@ -73,6 +73,8 @@
+     private RecentStore recents;
+     private ApiKeyStore secrets;
+     private DraftStore drafts;
++    private ReadingStore reading;
++    private SpeechReader speech;
+     private LinearLayout root,top,searchBar,formatInner,bottom,homeContent;
+     private HorizontalScrollView formatBar;
+     private FrameLayout frame;
+@@ -85,11 +87,14 @@
+     private boolean dirty=false,editing=false,homeMode=true,readerReady=false,suppress=false,dark=false;
+     private int fontSize=17,bg,surface,text,muted,border,accent;
+     private Runnable saveThen,draftPending;
++    private Dialog speechDialog;
++    private TextView speechStatus,speechProgress,speechPlay,speechRate;
+ 
+     @Override protected void onCreate(Bundle state){
+-        prefs=getSharedPreferences(PREFS,MODE_PRIVATE); recents=new RecentStore(prefs); drafts=new DraftStore(this,prefs); secrets=new ApiKeyStore(this); aiTranslator=new AiTranslationService(secrets,prefs);
++        prefs=getSharedPreferences(PREFS,MODE_PRIVATE); recents=new RecentStore(prefs); drafts=new DraftStore(this,prefs); reading=new ReadingStore(prefs); secrets=new ApiKeyStore(this); aiTranslator=new AiTranslationService(secrets,prefs);
+         dark=prefs.getBoolean(PREF_DARK,false); fontSize=clamp(prefs.getInt(PREF_FONT,17),13,28);
+         setTheme(dark?R.style.Theme_MDReader_Dark:R.style.Theme_MDReader_Light); super.onCreate(state);
++        speech=new SpeechReader(this,prefs,new SpeechReader.Listener(){public void onState(SpeechReader.State st){runOnUiThread(()->updateSpeechUi(st));}public void onError(String m){runOnUiThread(()->message("تعذر تشغيل القراءة بالصوت",m));}});
+         buildUi(); applyTheme(); configureEditor(); configurePreview();
+         Intent i=getIntent();
+         if(i!=null&&Intent.ACTION_VIEW.equals(i.getAction())&&i.getData()!=null) load(i.getData(),i.getFlags()); else showHome();
+@@ -136,7 +141,7 @@
+     private void configurePreview(){
+         WebView.setWebContentsDebuggingEnabled(false); preview.setBackgroundColor(Color.TRANSPARENT); preview.getSettings().setJavaScriptEnabled(true); preview.getSettings().setDomStorageEnabled(false); preview.getSettings().setAllowFileAccess(true); preview.getSettings().setAllowContentAccess(true); preview.addJavascriptInterface(new Bridge(),"Android");
+         preview.setFindListener((active,total,done)->{if(done)searchCount.setText(total<=0?"0/0":(active+1)+"/"+total);});
+-        preview.setWebViewClient(new WebViewClient(){@Override public void onPageFinished(WebView v,String u){readerReady=true;render();}@Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r){Uri u=r.getUrl();String s=u.getScheme();if(s!=null&&(s.equals("http")||s.equals("https")||s.equals("mailto")||s.equals("tel"))){external(u.toString());return true;}return false;}});
++        preview.setWebViewClient(new WebViewClient(){@Override public void onPageFinished(WebView v,String u){readerReady=true;render();restoreReadingPosition();}@Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r){Uri u=r.getUrl();String s=u.getScheme();if(s!=null&&(s.equals("http")||s.equals("https")||s.equals("mailto")||s.equals("tel"))){external(u.toString());return true;}return false;}});
+         preview.loadUrl("file:///android_asset/reader.html");
+     }
+ 
+@@ -147,7 +152,7 @@
+         getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);if(Build.VERSION.SDK_INT>=23){int f=getWindow().getDecorView().getSystemUiVisibility();f=dark?f&~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR:f|View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;getWindow().getDecorView().setSystemUiVisibility(f);}render();if(homeMode)refreshHome();
+     }
+ 
+-    private void showHome(){homeMode=true;closeSearch();home.setVisibility(View.VISIBLE);preview.setVisibility(View.GONE);editor.setVisibility(View.GONE);formatBar.setVisibility(View.GONE);bottom.setVisibility(View.GONE);homeBtn.setVisibility(View.GONE);openBtn.setVisibility(View.GONE);saveBtn.setVisibility(View.GONE);findBtn.setVisibility(View.GONE);title.setText("MD Reader");refreshHome();hideKeyboard();}
++    private void showHome(){if(!homeMode)saveReadingPosition();homeMode=true;closeSearch();home.setVisibility(View.VISIBLE);preview.setVisibility(View.GONE);editor.setVisibility(View.GONE);formatBar.setVisibility(View.GONE);bottom.setVisibility(View.GONE);homeBtn.setVisibility(View.GONE);openBtn.setVisibility(View.GONE);saveBtn.setVisibility(View.GONE);findBtn.setVisibility(View.GONE);title.setText("MD Reader");refreshHome();hideKeyboard();}
+     private void showDocument(){homeMode=false;home.setVisibility(View.GONE);bottom.setVisibility(View.VISIBLE);homeBtn.setVisibility(View.VISIBLE);openBtn.setVisibility(View.VISIBLE);saveBtn.setVisibility(View.VISIBLE);findBtn.setVisibility(View.VISIBLE);if(editing){editor.setVisibility(View.VISIBLE);preview.setVisibility(View.GONE);formatBar.setVisibility(View.VISIBLE);}else{editor.setVisibility(View.GONE);preview.setVisibility(View.VISIBLE);formatBar.setVisibility(View.GONE);render();}updateTitle();styleTabs();}
+ 
+     private void refreshHome(){
+@@ -163,13 +168,13 @@
+     private void restore(DraftStore.Draft d){currentName=d.name;currentUri=null;if(d.uri!=null&&!d.uri.isEmpty())try{currentUri=Uri.parse(d.uri);}catch(Exception ignored){}setText(d.text,false);dirty=true;showDocument();setEditing(true);}
+ 
