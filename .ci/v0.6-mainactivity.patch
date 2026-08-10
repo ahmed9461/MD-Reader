@@ -1,6 +1,6 @@
 --- a/app/src/main/java/app/mdreader/mobile/MainActivity.java
 +++ b/app/src/main/java/app/mdreader/mobile/MainActivity.java
-@@ -210,7 +210,7 @@
+@@ -210,4 +210,4 @@
 -    private void about(){message("MD Reader 0.5.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة، والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
 +    private void about(){message("MD Reader 0.6.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت المحلي أو صوت AI من OpenAI، حفظ موضع القراءة، والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
  
