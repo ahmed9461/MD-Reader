@@ -1,0 +1,51 @@
+--- a/app/src/main/java/app/mdreader/mobile/MainActivity.java
++++ b/app/src/main/java/app/mdreader/mobile/MainActivity.java
+@@ -274,8 +274,46 @@
+     private void message(String t,String m){choice(t,m,new Action("حسنًا",null,false));}
+     private Dialog dialog(){Dialog d=new Dialog(this);d.requestWindowFeature(Window.FEATURE_NO_TITLE);return d;}
+     private LinearLayout panel(String t){LinearLayout p=new LinearLayout(this);p.setOrientation(LinearLayout.VERTICAL);p.setPadding(dp(16),dp(10),dp(16),dp(14));p.setBackground(round(surface,border,22));View handle=new View(this);handle.setBackground(round(border,border,4));LinearLayout.LayoutParams hp=new LinearLayout.LayoutParams(dp(42),dp(4));hp.gravity=Gravity.CENTER_HORIZONTAL;hp.bottomMargin=dp(14);p.addView(handle,hp);TextView h=label(t,19,text,true);h.setPadding(dp(2),0,dp(2),dp(6));p.addView(h);return p;}
+-    private void showDialog(Dialog d,View p,boolean tall){p.setAlpha(0f);p.setTranslationY(getResources().getDisplayMetrics().heightPixels);d.setContentView(p);d.setCanceledOnTouchOutside(true);d.setOnShowListener(x->{Window w=d.getWindow();if(w!=null){w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));w.setDimAmount(.62f);w.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);w.setGravity(Gravity.BOTTOM);w.setLayout(WindowManager.LayoutParams.MATCH_PARENT,tall?(int)(getResources().getDisplayMetrics().heightPixels*.86f):WindowManager.LayoutParams.WRAP_CONTENT);w.getDecorView().setPadding(dp(10),0,dp(10),dp(10));}p.post(()->{p.setTranslationY(Math.max(p.getHeight()+dp(24),dp(260)));p.setAlpha(1f);p.animate().translationY(0f).setDuration(280).setInterpolator(new DecelerateInterpolator()).start();});});d.show();}
+-    private void dismissSheet(Dialog d,View p,Runnable after){if(d==null||!d.isShowing()){if(after!=null)after.run();return;}p.animate().translationY(Math.max(p.getHeight()+dp(24),dp(260))).alpha(0f).setDuration(190).setInterpolator(new DecelerateInterpolator()).withEndAction(()->{try{d.dismiss();}catch(Exception ignored){}if(after!=null)after.run();}).start();}
++    private void showDialog(Dialog d,View p,boolean tall){
++        FrameLayout host=new FrameLayout(this);
++        host.setBackgroundColor(Color.TRANSPARENT);
++        host.setPadding(dp(10),0,dp(10),dp(10));
++        int panelHeight=tall?(int)(getResources().getDisplayMetrics().heightPixels*.86f):ViewGroup.LayoutParams.WRAP_CONTENT;
++        FrameLayout.LayoutParams panelLp=new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,panelHeight,Gravity.BOTTOM);
++        p.setAlpha(0f);
++        p.setVisibility(View.INVISIBLE);
++        p.setTranslationY(0f);
++        p.setClickable(true);
++        host.addView(p,panelLp);
++        host.setOnClickListener(v->dismissSheet(d,p,null));
++        d.setContentView(host);
++        d.setCanceledOnTouchOutside(false);
++        Window w=d.getWindow();
++        if(w!=null){
++            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
++            w.setDimAmount(.62f);
++            w.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
++            w.setWindowAnimations(0);
++        }
++        d.setOnShowListener(x->{
++            Window shown=d.getWindow();
++            if(shown!=null)shown.setLayout(WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.MATCH_PARENT);
++            p.post(()->{
++                float from=p.getHeight()+dp(18);
++                p.setTranslationY(from);
++                p.setAlpha(1f);
++                p.setVisibility(View.VISIBLE);
++                p.animate().cancel();
++                p.postOnAnimation(()->p.animate().translationY(0f).alpha(1f).setDuration(220).setInterpolator(new DecelerateInterpolator()).start());
++            });
++        });
++        d.show();
++    }
++    private void dismissSheet(Dialog d,View p,Runnable after){
++        if(d==null||!d.isShowing()){if(after!=null)after.run();return;}
++        p.animate().cancel();
++        p.animate().translationY(p.getHeight()+dp(18)).alpha(0f).setDuration(150).setInterpolator(new DecelerateInterpolator()).withEndAction(()->{try{d.dismiss();}catch(Exception ignored){}if(after!=null)after.run();}).start();
++    }
+     private TextView sheetButton(String s,boolean danger){TextView v=label(s,16,danger?Color.rgb(248,113,113):text,false);v.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);v.setPadding(dp(16),0,dp(16),0);v.setBackground(round(bg,border,13));return v;}
+ 
+     private TextView topAction(String s,int size){TextView v=label(s,size,text,false);v.setGravity(Gravity.CENTER);v.setPadding(dp(10),0,dp(10),0);v.setMinWidth(dp(48));v.setClickable(true);return v;}
