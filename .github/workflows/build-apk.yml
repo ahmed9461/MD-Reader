@@ -3,7 +3,7 @@ name: Build MD Reader APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, v0.5-dev]
+    branches: [main, v0.6-dev]
 
 permissions:
   contents: read
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Reconstruct and patch v0.5 MainActivity
+      - name: Reconstruct and patch v0.6 MainActivity
         shell: bash
         run: |
           set -euo pipefail
@@ -36,13 +36,17 @@ jobs:
           cat .ci/v0.5-mainactivity.patch.* > /tmp/v0.5-mainactivity.patch
           echo 'f608cd4a045796449224fb648a2b4a663361d4654f58716aac960bcc71c7ed8e  /tmp/v0.5-mainactivity.patch' | sha256sum --check --strict
           patch -p1 < /tmp/v0.5-mainactivity.patch
-          grep -q 'القراءة بالصوت' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          patch -p1 < .ci/v0.6-mainactivity.patch
+          grep -q 'إعدادات الصوت' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'SpeechSettingsDialog.show' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'new SpeechReader' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'new ReadingStore' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'DeepSeek' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'PROVIDER_DEEPSEEK' app/src/main/java/app/mdreader/mobile/AiTranslationService.java
+          grep -q 'https://api.openai.com/v1/audio/speech' app/src/main/java/app/mdreader/mobile/OpenAiSpeechClient.java
+          grep -q 'gpt-4o-mini-tts' app/src/main/java/app/mdreader/mobile/OpenAiSpeechClient.java
           grep -q 'android.intent.action.TTS_SERVICE' app/src/main/AndroidManifest.xml
-          grep -q "versionName '0.5.0'" app/build.gradle
+          grep -q "versionName '0.6.0'" app/build.gradle
 
       - name: Reconstruct exact launcher artwork
         shell: bash
@@ -104,7 +108,7 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Verify APK and v0.5 resources
+      - name: Verify APK and v0.6 resources
         shell: bash
         run: |
           set -euo pipefail
@@ -115,12 +119,14 @@ jobs:
           grep -q 'res/mipmap-anydpi-v26/ic_launcher.xml' /tmp/apk-list.txt
           grep -q 'ic_launcher_art.webp' /tmp/apk-list.txt
           find app/build -name 'SpeechReader.class' -print -quit | grep -q .
+          find app/build -name 'OpenAiSpeechClient.class' -print -quit | grep -q .
+          find app/build -name 'SpeechSettingsDialog.class' -print -quit | grep -q .
           find app/build -name 'ReadingStore.class' -print -quit | grep -q .
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MD-Reader-v0.5.0-debug
+          name: MD-Reader-v0.6.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
