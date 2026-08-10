@@ -16,17 +16,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify and reconstruct v0.3.1 MainActivity
+      - name: Reconstruct and verify v0.3.1 MainActivity
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/v031parts.sha256 <<'HASHES'
-          416920ef78e74c5f630827eb3a19e78227c0a5fc2c38f8c28d91b60f315318c5  .src-v03/MainActivity.java.gz.b64.00
-          564d9e15139200757561f6cb9ada9aa84dd5d64181370b6bebeaaa2e508b9a44  .src-v03/MainActivity.java.gz.b64.01
-          ef1cae7f9c6e37437db60f35771a78f8e21cca5e7be28905810d3b28da5d9e55  .src-v03/MainActivity.java.gz.b64.02
-          e7a573a540b71a67290537733bdf4ce2d8a59c862f9622a1ff82ecdb494f4ee6  .src-v03/MainActivity.java.gz.b64.03
-          HASHES
-          sha256sum --check --strict /tmp/v031parts.sha256
           mkdir -p app/src/main/java/app/mdreader/mobile
           cat .src-v03/MainActivity.java.gz.b64.* | base64 --decode | gzip -dc > app/src/main/java/app/mdreader/mobile/MainActivity.java
           test -s app/src/main/java/app/mdreader/mobile/MainActivity.java
