@@ -38,7 +38,7 @@ final class SpeechSettingsDialog {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         root.setPadding(dp(activity, 18), dp(activity, 18), dp(activity, 18), dp(activity, 14));
-        root.setBackground(round(surface, border, 24));
+        root.setBackground(round(activity, surface, border, 24));
 
         TextView title = text(activity, "إعدادات الصوت", 21, text, true);
         root.addView(title, lp(-1, dp(activity, 46)));
@@ -80,12 +80,12 @@ final class SpeechSettingsDialog {
 
         Runnable refresh = () -> {
             String engine = reader.enginePreference();
-            styleChip(auto, SpeechReader.ENGINE_AUTO.equals(engine), accent, bg, border, text);
-            styleChip(ai, SpeechReader.ENGINE_AI.equals(engine), accent, bg, border, text);
-            styleChip(device, SpeechReader.ENGINE_DEVICE.equals(engine), accent, bg, border, text);
+            styleChip(activity, auto, SpeechReader.ENGINE_AUTO.equals(engine), accent, bg, border, text);
+            styleChip(activity, ai, SpeechReader.ENGINE_AI.equals(engine), accent, bg, border, text);
+            styleChip(activity, device, SpeechReader.ENGINE_DEVICE.equals(engine), accent, bg, border, text);
             String voice = reader.voice();
-            styleChip(marin, "marin".equals(voice), accent, bg, border, text);
-            styleChip(cedar, "cedar".equals(voice), accent, bg, border, text);
+            styleChip(activity, marin, "marin".equals(voice), accent, bg, border, text);
+            styleChip(activity, cedar, "cedar".equals(voice), accent, bg, border, text);
             key.setText(reader.hasOpenAiKey() ? "✓ مفتاح OpenAI محفوظ — صوت AI جاهز" : "⚠ لا يوجد مفتاح OpenAI محفوظ. أضفه من إعدادات الترجمة.");
             key.setTextColor(reader.hasOpenAiKey() ? accent : muted);
             cache.setText(cacheLabel(reader));
@@ -112,6 +112,7 @@ final class SpeechSettingsDialog {
         close.setOnClickListener(v -> dialog.dismiss());
 
         dialog.setContentView(root);
+        dialog.show();
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawableResource(android.R.color.transparent);
@@ -124,10 +125,9 @@ final class SpeechSettingsDialog {
             attrs.height = WindowManager.LayoutParams.WRAP_CONTENT;
             attrs.horizontalMargin = 0.025f;
             window.setAttributes(attrs);
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         refresh.run();
-        dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
     }
 
     private static String cacheLabel(SpeechReader reader) {
@@ -155,15 +155,15 @@ final class SpeechSettingsDialog {
         return v;
     }
 
-    private static void styleChip(TextView v, boolean selected, int accent, int bg, int border, int text) {
+    private static void styleChip(Activity a, TextView v, boolean selected, int accent, int bg, int border, int text) {
         v.setTextColor(selected ? Color.WHITE : text);
-        v.setBackground(round(selected ? accent : bg, selected ? accent : border, 12));
+        v.setBackground(round(a, selected ? accent : bg, selected ? accent : border, 12));
     }
 
     private static TextView action(Activity a, String value, int fill, int color, boolean primary) {
         TextView v = text(a, value, 15, color, primary);
         v.setGravity(Gravity.CENTER);
-        v.setBackground(round(fill, fill, 13));
+        v.setBackground(round(a, fill, fill, 13));
         return v;
     }
 
@@ -188,15 +188,18 @@ final class SpeechSettingsDialog {
         p.topMargin = dp(a, 7); return p;
     }
 
-    private static GradientDrawable round(int fill, int stroke, int radiusDp) {
+    private static GradientDrawable round(Activity a, int fill, int stroke, int radiusDp) {
         GradientDrawable d = new GradientDrawable();
-        d.setColor(fill); d.setStroke(1, stroke); d.setCornerRadius(radiusDp * 3f); return d;
+        d.setColor(fill); d.setStroke(dp(a, 1), stroke); d.setCornerRadius(dp(a, radiusDp)); return d;
     }
 
     private static int themeColor(Activity a, int attr, int fallback) {
         TypedValue out = new TypedValue();
         if (a.getTheme().resolveAttribute(attr, out, true)) {
             if (out.type >= TypedValue.TYPE_FIRST_COLOR_INT && out.type <= TypedValue.TYPE_LAST_COLOR_INT) return out.data;
+            if (out.resourceId != 0) {
+                try { return a.getColor(out.resourceId); } catch (Exception ignored) {}
+            }
         }
         return fallback;
     }
