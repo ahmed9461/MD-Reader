@@ -3,7 +3,7 @@ name: Build MD Reader APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, v0.2-dev]
+    branches: [main, v0.3-dev]
 
 permissions:
   contents: read
@@ -16,33 +16,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify and reconstruct MainActivity source
+      - name: Verify and reconstruct v0.3 MainActivity
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/mainparts.sha256 <<'EOF'
-          aefb514e89918ba107575ae5428a02f4735589a724c5ad4970efff90ba3b34e9  .src-parts/MainActivity.java.b64.00
-          873990f285873da5c4e04be035b53ac398cadaad5f91a58f8460282d7737d51f  .src-parts/MainActivity.java.b64.01a
-          5881eb1c59c14bcf8d69d1d6a3e867d09744309c6648e3ed572a6c6aa9b1809e  .src-parts/MainActivity.java.b64.01b
-          5c619c1f5295c8a15714f84444c2887bca93ddbf5c1d8e0ce50a1f53af9c3bbf  .src-parts/MainActivity.java.b64.01c
-          48e3d52698d2b94be4f2f8d6079b44e4079ba9d15e3a455d12c469a36509563b  .src-parts/MainActivity.java.b64.01d0
-          6b64f980fec84eef393c3ec80a7eae839117884ebcf8f22bc5a2428b8ef1e120  .src-parts/MainActivity.java.b64.01d1
-          db4170faf5f4c084c89dba9ff13e6f7c542c6a2d540295c8e51f24bd315c588d  .src-parts/MainActivity.java.b64.01d2
-          85f93fba70359eb3f51c0f67d382701fd49eb9938edf79dbf059a8027c273e0f  .src-parts/MainActivity.java.b64.01d3
-          fd0a79f1f0e83d9e657fab3aa014379c1f8e2a3a69d6327e42dd98df70ba1492  .src-parts/MainActivity.java.b64.02
-          2c8e2f0a5db70e00abf0e8adf5e750ee10b45f3655bf7e5f990e558d2fecd530  .src-parts/MainActivity.java.b64.03
-          5c793d85ff71230e8edf236c49ab3f28fd3b0bae8a0b6899186ee64fb1513cf2  .src-parts/MainActivity.java.b64.04
-          ddf82d459a49623f1c666f55696e6d46f67245ce6c1a2cd256585e28a92dbe09  .src-parts/MainActivity.java.b64.05
-          ca2517d7a1a262fae550d5911cd4e990ba4f006f4f74f2916125095c38c2ae20  .src-parts/MainActivity.java.b64.06
-          460840826d47cbeee80f8a75b4cd341460840143a10c6cfc9a17bfa6af3ac8d6  .src-parts/MainActivity.java.b64.07
-          3ecb43e2d2b097938f18e2976255baa0f1e9ecf49933bb4d04724e885a514510  .src-parts/MainActivity.java.b64.08
+          cat > /tmp/v03parts.sha256 <<'EOF'
+          a3f1d797de1e0a352196b0438d8402a812d22e4b57b8d22b5b31a121be1f807e  .src-v03/MainActivity.java.gz.b64.00
+          1d0787fa2558b582e432748be52636e736b54103e6f710484410e1447f9ee176  .src-v03/MainActivity.java.gz.b64.01
+          055d8088fea7bcbb1683ecc8eaf227ee47a5bcff5a04b44e2279a880eb10777f  .src-v03/MainActivity.java.gz.b64.02
+          db0adc95689cbb6d2caa3b523e204189ff2ee0f3092f5c0fc5fafed8b9b2442a  .src-v03/MainActivity.java.gz.b64.03
           EOF
-          sha256sum --check --strict /tmp/mainparts.sha256
+          sha256sum --check --strict /tmp/v03parts.sha256
           mkdir -p app/src/main/java/app/mdreader/mobile
-          cat .src-parts/MainActivity.java.b64.* | base64 --decode > app/src/main/java/app/mdreader/mobile/MainActivity.java
+          cat .src-v03/MainActivity.java.gz.b64.* | base64 --decode | gzip -dc > app/src/main/java/app/mdreader/mobile/MainActivity.java
           test -s app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q "public class MainActivity" app/src/main/java/app/mdreader/mobile/MainActivity.java
-          echo "d735a3a814e3272f0ba9e6e9cb8262c5337754204ee5233365d35566dc468e97  app/src/main/java/app/mdreader/mobile/MainActivity.java" | sha256sum --check --strict
+          grep -q "ApiKeyStore" app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q "translationSettings" app/src/main/java/app/mdreader/mobile/MainActivity.java
+          echo "ca2b495d74e56663a815641e793c750d29643f612a2ea50fc2164ddec52ca04f  app/src/main/java/app/mdreader/mobile/MainActivity.java" | sha256sum --check --strict
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -98,7 +89,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MD-Reader-v0.2.0-debug
+          name: MD-Reader-v0.3.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
