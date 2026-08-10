@@ -1,0 +1,31 @@
++    private void about(){message("MD Reader 0.5.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة، والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
++
++    private void speechMenu(){
++        List<Action>a=new ArrayList<>();
++        if(editing){
++            if(editor.getSelectionStart()!=editor.getSelectionEnd())a.add(new Action("قراءة المحدد",()->speakEditorRange(selectedRange()),false));
++            a.add(new Action("قراءة الفقرة الحالية",()->speakEditorRange(currentParagraphRange()),false));
++        }else a.add(new Action("قراءة النص المحدد في المعاينة",this::speakPreviewSelection,false));
++        a.add(new Action("قراءة المستند كاملًا",()->startSpeech(txt()),false));
++        if(speech!=null&&speech.isActive())a.add(new Action("فتح مشغل الصوت",this::openSpeechPlayer,false));
++        a.add(new Action("إلغاء",null,false));
++        sheet("القراءة بالصوت",a.toArray(new Action[0]));
++    }
++    private void speakEditorRange(int[] range){if(range==null||range.length<2)return;String t=txt();int a=Math.max(0,Math.min(range[0],t.length())),b=Math.max(a,Math.min(range[1],t.length()));if(b<=a){Toast.makeText(this,"لا يوجد نص للقراءة",Toast.LENGTH_SHORT).show();return;}startSpeech(t.substring(a,b));}
++    private void speakPreviewSelection(){preview.evaluateJavascript("(function(){return window.getSelection?window.getSelection().toString():'';})()",value->{String selected=jsonString(value);runOnUiThread(()->{if(selected.trim().isEmpty()){Toast.makeText(this,"حدد النص أولًا في وضع المعاينة",Toast.LENGTH_SHORT).show();return;}startSpeech(selected);});});}
++    private void startSpeech(String source){List<MarkdownSpeechPlan.Block> blocks=MarkdownSpeechPlan.blocks(source);if(blocks.isEmpty()){Toast.makeText(this,"لا يوجد نص مناسب للقراءة",Toast.LENGTH_SHORT).show();return;}speech.start(blocks);openSpeechPlayer();}
++    private void openSpeechPlayer(){
++        if(speechDialog!=null&&speechDialog.isShowing()){updateSpeechUi(speech.state());return;}
++        Dialog d=dialog();LinearLayout p=panel("القراءة بالصوت");speechDialog=d;
++        speechStatus=label("جاري تجهيز محرك الصوت…",16,text,true);speechStatus.setMaxLines(4);speechStatus.setPadding(dp(10),dp(10),dp(10),dp(10));speechStatus.setBackground(round(bg,border,12));p.addView(speechStatus,textLp());
++        speechProgress=label("",13,muted,false);speechProgress.setGravity(Gravity.CENTER);p.addView(speechProgress,textLp());
++        LinearLayout controls=new LinearLayout(this);TextView prev=mini("السابق",false);speechPlay=mini("⏸ إيقاف مؤقت",true);TextView next=mini("التالي",false);prev.setOnClickListener(v->speech.previous());speechPlay.setOnClickListener(v->{if(speech.isPaused())speech.resume();else speech.pause();});next.setOnClickListener(v->speech.next());controls.addView(prev,weight(1,0,4));controls.addView(speechPlay,weight(1,4,4));controls.addView(next,weight(1,4,0));p.addView(controls,new LinearLayout.LayoutParams(-1,dp(50)));
++        speechRate=sheetButton("السرعة",false);speechRate.setGravity(Gravity.CENTER);speechRate.setOnClickListener(v->{float r=speech.rate();float n=r<.74f?.75f:r<.99f?1f:r<1.24f?1.25f:r<1.49f?1.5f:r<1.99f?2f:.5f;speech.setRate(n);});p.addView(speechRate,buttonLp());
++        TextView stop=sheetButton("إيقاف القراءة",true);stop.setOnClickListener(v->speech.stop());p.addView(stop,buttonLp());TextView hide=sheetButton("إخفاء المشغل",false);hide.setOnClickListener(v->dismissSheet(d,p,null));p.addView(hide,buttonLp());
++        d.setOnDismissListener(x->{if(speechDialog==d){speechDialog=null;speechStatus=null;speechProgress=null;speechPlay=null;speechRate=null;}});showDialog(d,p,false);updateSpeechUi(speech.state());
++    }
++    private void updateSpeechUi(SpeechReader.State st){if(st==null)return;if(speechStatus!=null){String value=st.text==null||st.text.trim().isEmpty()?(st.ready?"لا توجد قراءة نشطة":"جاري تجهيز محرك الصوت…"):st.text;speechStatus.setText(value);}if(speechProgress!=null){String lang=st.arabic?"العربية":"English";speechProgress.setText(st.total<=0?(st.ready?"جاهز":"جاري التجهيز"):(st.active||st.paused?"الفقرة "+(st.index+1)+" من "+st.total+" • "+lang:"اكتملت القراءة"));}if(speechPlay!=null){speechPlay.setText(st.paused?"▶ استئناف":st.active?"⏸ إيقاف مؤقت":"▶ تشغيل");speechPlay.setEnabled(st.active||st.paused);}if(speechRate!=null)speechRate.setText("سرعة القراءة: "+rateLabel(st.rate));}
++    private String rateLabel(float r){if(Math.abs(r-1f)<.01f)return "1×";if(Math.abs(r-2f)<.01f)return "2×";return String.format(Locale.US,"%.2f×",r).replace("0×","×");}
++
++    private String currentDocKey(){return currentUri==null?"":currentUri.toString();}
++    private void saveReadingPosition(){String doc=currentDocKey();if(doc.isEmpty()||homeMode)return;if(editing){int len=Math.max(1,editor.length());reading.savePosition(doc,Math.max(0f,Math.min(1f,(float)editor.getSelectionStart()/len)));return;}preview.evaluateJavascript("(function(){var d=document.documentElement,b=document.body;var h=Math.max(d?d.scrollHeight:0,b?b.scrollHeight:0);var m=Math.max(1,h-window.innerHeight);return String(Math.max(0,Math.min(1,window.scrollY/m)));})()",value->{String raw=jsonString(value);try{reading.savePosition(doc,Float.parseFloat(raw));}catch(Exception ignored){}});}
