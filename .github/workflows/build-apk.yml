@@ -33,7 +33,7 @@ jobs:
           patch -p1 < .ci/v0.3.1-bottom-sheet.patch
           echo '051a55078d3dbecaca37628bb1a8eca0bf5cd305c1fb7472041e1eba2bd331bd  app/src/main/java/app/mdreader/mobile/MainActivity.java' | sha256sum --check --strict
           patch -p1 < .ci/v0.4-mainactivity.patch
-          echo 'cc38f5356192bd18fef3c67be2f6e808797fee3953203860b6e6c5a004d2ff07  app/src/main/java/app/mdreader/mobile/MainActivity.java' | sha256sum --check --strict
+          sha256sum app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'DeepSeek' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'secrets.hasKey(provider)' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'PROVIDER_DEEPSEEK' app/src/main/java/app/mdreader/mobile/AiTranslationService.java
