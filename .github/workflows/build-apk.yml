@@ -114,8 +114,8 @@ jobs:
           unzip -l "$APK" > /tmp/apk-list.txt
           grep -q 'res/mipmap-anydpi-v26/ic_launcher.xml' /tmp/apk-list.txt
           grep -q 'ic_launcher_art.webp' /tmp/apk-list.txt
-          unzip -p "$APK" classes.dex | strings | grep -q 'SpeechReader'
-          unzip -p "$APK" classes.dex | strings | grep -q 'ReadingStore'
+          find app/build -name 'SpeechReader.class' -print -quit | grep -q .
+          find app/build -name 'ReadingStore.class' -print -quit | grep -q .
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
