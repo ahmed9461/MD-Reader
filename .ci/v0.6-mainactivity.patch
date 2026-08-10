@@ -1,0 +1,14 @@
+--- a/app/src/main/java/app/mdreader/mobile/MainActivity.java
++++ b/app/src/main/java/app/mdreader/mobile/MainActivity.java
+@@ -1,1 +1,1 @@
+@@
+-    private void about(){message("MD Reader 0.5.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة، والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
++    private void about(){message("MD Reader 0.6.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت المحلي أو صوت AI من OpenAI، حفظ موضع القراءة، والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
+@@
+         }else a.add(new Action("قراءة النص المحدد في المعاينة",this::speakPreviewSelection,false));
+         a.add(new Action("قراءة المستند كاملًا",()->startSpeech(txt()),false));
+         if(speech!=null&&speech.isActive())a.add(new Action("فتح مشغل الصوت",this::openSpeechPlayer,false));
++        a.add(new Action("إعدادات الصوت",()->SpeechSettingsDialog.show(this,speech),false));
+         a.add(new Action("إلغاء",null,false));
+         sheet("القراءة بالصوت",a.toArray(new Action[0]));
+     }
