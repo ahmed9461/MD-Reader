@@ -1,0 +1,131 @@
+from pathlib import Path
+
+path = Path("app/src/main/java/app/mdreader/mobile/MainActivity.java")
+s = path.read_text()
+
+
+def once(old: str, new: str, label: str) -> None:
+    global s
+    count = s.count(old)
+    if count != 1:
+        raise SystemExit(f"{label}: expected exactly 1 match, got {count}")
+    s = s.replace(old, new, 1)
+
+
+once(
+    "    private EditText editor,searchInput;\n    private AdjustableScroller editorScroller;\n",
+    "    private FlingEditText editor;\n    private EditText searchInput;\n",
+    "editor fields",
+)
+
+once(
+    "        editor=new EditText(this);",
+    "        editor=new FlingEditText(this);",
+    "editor construction",
+)
+
+once(
+    """    private void configureEditorComfort(){
+        editor.setScrollContainer(true);
+        editor.setVerticalScrollBarEnabled(true);
+        editor.setScrollbarFadingEnabled(true);
+        editor.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+        editor.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        editorScroller=new AdjustableScroller(this,editorScrollPercent);
+        editor.setScroller(editorScroller);
+        editor.setGravity(Gravity.TOP|Gravity.START);
+        editor.setHorizontallyScrolling(false);
+        if(Build.VERSION.SDK_INT>=23){
+            editor.setScrollIndicators(View.SCROLL_INDICATOR_TOP|View.SCROLL_INDICATOR_BOTTOM,
+                    View.SCROLL_INDICATOR_TOP|View.SCROLL_INDICATOR_BOTTOM);
+        }
+    }
+""",
+    """    private void configureEditorComfort(){
+        editor.setScrollContainer(true);
+        editor.setVerticalScrollBarEnabled(true);
+        editor.setScrollbarFadingEnabled(true);
+        editor.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+        editor.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        editor.setFlingSpeedPercent(editorScrollPercent);
+        editor.setGravity(Gravity.TOP|Gravity.START);
+        editor.setHorizontallyScrolling(false);
+        if(Build.VERSION.SDK_INT>=23){
+            editor.setScrollIndicators(View.SCROLL_INDICATOR_TOP|View.SCROLL_INDICATOR_BOTTOM,
+                    View.SCROLL_INDICATOR_TOP|View.SCROLL_INDICATOR_BOTTOM);
+        }
+    }
+""",
+    "editor comfort",
+)
+
+once(
+    '        TextView info=label("100% = سرعة Android الافتراضية. خفّض النسبة لتمرير أهدأ أو ارفعها لانتقال أسرع عند السحب والإفلات.",13,muted,false);p.addView(info,textLp());',
+    '        TextView info=label("هذه النسبة تتحكم بسرعة الانزلاق بعد رفع إصبعك. اسحب ثم ارفع إصبعك ليستمر المحرر بالتمرير، والمس الشاشة مرة أخرى لإيقافه فورًا.",13,muted,false);p.addView(info,textLp());',
+    "scroll help",
+)
+
+once(
+    "if(editorScroller!=null)editorScroller.setSpeedPercent(editorScrollPercent);",
+    "editor.setFlingSpeedPercent(editorScrollPercent);",
+    "scroll setting target",
+)
+
+once(
+    '        EditText query=multiLineField("ابحث عن…",searchInput.getText().toString(),2);\n'
+    '        EditText replacement=multiLineField("استبدل بـ… (يمكن تركه فارغًا للحذف)","",2);\n'
+    '        p.addView(query,textLp());p.addView(replacement,textLp());',
+    '        EditText query=multiLineField("ابحث عن…",searchInput.getText().toString(),1);\n'
+    '        EditText replacement=multiLineField("استبدل بـ… (يمكن تركه فارغًا للحذف)","",1);\n'
+    '        query.setMinLines(1);query.setMaxLines(4);replacement.setMinLines(1);replacement.setMaxLines(4);\n'
+    '        p.addView(query,textLp());p.addView(replacement,textLp());',
+    "compact search fields",
+)
+
+once(
+    "        refresh.run();showDialog(d,p,true);query.requestFocus();keyboard(query);",
+    "        refresh.run();showDialog(d,p,false);query.requestFocus();keyboard(query);",
+    "compact search dialog",
+)
+
+once(
+    "    private void sheet(String t,Action...aa){Dialog d=dialog();LinearLayout p=panel(t);for(Action a:aa){TextView b=sheetButton(a.text,a.danger);b.setOnClickListener(v->dismissSheet(d,p,a.run));p.addView(b,buttonLp());}showDialog(d,p,false);}",
+    """    private void sheet(String t,Action...aa){
+        Dialog d=dialog();
+        LinearLayout p=panel(t);
+        boolean scrollable=aa!=null&&aa.length>7;
+        LinearLayout target=p;
+        if(scrollable){
+            ScrollView sc=new ScrollView(this);
+            sc.setFillViewport(false);
+            sc.setVerticalScrollBarEnabled(true);
+            LinearLayout list=new LinearLayout(this);
+            list.setOrientation(LinearLayout.VERTICAL);
+            sc.addView(list,new ScrollView.LayoutParams(-1,-2));
+            p.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
+            target=list;
+        }
+        if(aa!=null)for(Action a:aa){
+            TextView b=sheetButton(a.text,a.danger);
+            b.setOnClickListener(v->dismissSheet(d,p,a.run));
+            target.addView(b,buttonLp());
+        }
+        showDialog(d,p,scrollable);
+    }""",
+    "scrollable action sheet",
+)
+
+once(
+    "            w.setWindowAnimations(0);",
+    "            w.setWindowAnimations(0);\n            w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);",
+    "dialog keyboard resize",
+)
+
+once(
+    '    private void about(){message("MD Reader 0.8.0",',
+    '    private void about(){message("MD Reader 0.8.1",',
+    "about version",
+)
+
+path.write_text(s)
+print("Applied v0.8.1 editor/dialog fixes")
