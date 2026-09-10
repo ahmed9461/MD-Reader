@@ -19,8 +19,21 @@ final class ReadingStore {
         }
     }
 
+    static final class EditorState {
+        final int selectionStart;
+        final int selectionEnd;
+        final int scrollY;
+
+        EditorState(int selectionStart, int selectionEnd, int scrollY) {
+            this.selectionStart = selectionStart;
+            this.selectionEnd = selectionEnd;
+            this.scrollY = scrollY;
+        }
+    }
+
     private static final String PREF_POSITIONS = "reading_positions_v1";
     private static final String PREF_BOOKMARKS = "reading_bookmarks_v1";
+    private static final String PREF_EDITOR_STATES = "editor_states_v1";
     private final SharedPreferences prefs;
 
     ReadingStore(SharedPreferences prefs) { this.prefs = prefs; }
@@ -37,6 +50,34 @@ final class ReadingStore {
             JSONObject root = new JSONObject(prefs.getString(PREF_POSITIONS, "{}"));
             root.put(doc, clamp(ratio));
             prefs.edit().putString(PREF_POSITIONS, root.toString()).apply();
+        } catch (Exception ignored) {}
+    }
+
+    synchronized EditorState editorState(String doc) {
+        if (doc == null || doc.isEmpty()) return new EditorState(-1, -1, 0);
+        try {
+            JSONObject root = new JSONObject(prefs.getString(PREF_EDITOR_STATES, "{}"));
+            JSONObject o = root.optJSONObject(doc);
+            if (o == null) return new EditorState(-1, -1, 0);
+            return new EditorState(
+                    Math.max(-1, o.optInt("selectionStart", -1)),
+                    Math.max(-1, o.optInt("selectionEnd", -1)),
+                    Math.max(0, o.optInt("scrollY", 0)));
+        } catch (Exception ignored) {
+            return new EditorState(-1, -1, 0);
+        }
+    }
+
+    synchronized void saveEditorState(String doc, int selectionStart, int selectionEnd, int scrollY) {
+        if (doc == null || doc.isEmpty()) return;
+        try {
+            JSONObject root = new JSONObject(prefs.getString(PREF_EDITOR_STATES, "{}"));
+            JSONObject o = new JSONObject()
+                    .put("selectionStart", Math.max(0, selectionStart))
+                    .put("selectionEnd", Math.max(0, selectionEnd))
+                    .put("scrollY", Math.max(0, scrollY));
+            root.put(doc, o);
+            prefs.edit().putString(PREF_EDITOR_STATES, root.toString()).apply();
         } catch (Exception ignored) {}
     }
 
@@ -107,7 +148,14 @@ final class ReadingStore {
             JSONObject bm = new JSONObject(prefs.getString(PREF_BOOKMARKS, "{}"));
             JSONArray a = bm.optJSONArray(from);
             if (a != null) { bm.put(to, a); bm.remove(from); }
-            prefs.edit().putString(PREF_POSITIONS, pos.toString()).putString(PREF_BOOKMARKS, bm.toString()).apply();
+            JSONObject editor = new JSONObject(prefs.getString(PREF_EDITOR_STATES, "{}"));
+            JSONObject state = editor.optJSONObject(from);
+            if (state != null) { editor.put(to, state); editor.remove(from); }
+            prefs.edit()
+                    .putString(PREF_POSITIONS, pos.toString())
+                    .putString(PREF_BOOKMARKS, bm.toString())
+                    .putString(PREF_EDITOR_STATES, editor.toString())
+                    .apply();
         } catch (Exception ignored) {}
     }
 

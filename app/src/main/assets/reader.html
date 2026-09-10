@@ -66,7 +66,7 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
     html:false,
     linkify:true,
     typographer:true,
-    breaks:false,
+    breaks:true,
     highlight:function(str,lang){
       if(lang && lang.toLowerCase()==='mermaid') return esc(str);
       if(lang && window.hljs && hljs.getLanguage(lang)){
