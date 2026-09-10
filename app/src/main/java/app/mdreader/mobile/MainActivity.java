@@ -81,8 +81,8 @@ public class MainActivity extends Activity {
     private FrameLayout frame;
     private ScrollView home;
     private WebView preview;
-    private EditText editor,searchInput;
-    private AdjustableScroller editorScroller;
+    private FlingEditText editor;
+    private EditText searchInput;
     private TextView title,searchCount,previewTab,editTab,homeBtn,openBtn,saveBtn,findBtn,moreBtn,quickNavBtn,extraToolsBtn,replaceSearchBtn;
     private Uri currentUri;
     private String currentName="غير محفوظ.md",savedText="";
@@ -122,7 +122,7 @@ public class MainActivity extends Activity {
         frame=new FrameLayout(this); root.addView(frame,new LinearLayout.LayoutParams(-1,0,1));
         home=new ScrollView(this); home.setFillViewport(true); homeContent=new LinearLayout(this); homeContent.setOrientation(LinearLayout.VERTICAL); homeContent.setPadding(dp(18),dp(20),dp(18),dp(32)); home.addView(homeContent,new ScrollView.LayoutParams(-1,-2)); frame.addView(home,new FrameLayout.LayoutParams(-1,-1));
         preview=new WebView(this); frame.addView(preview,new FrameLayout.LayoutParams(-1,-1));
-        editor=new EditText(this); editor.setGravity(Gravity.TOP); editor.setPadding(dp(16),dp(14),dp(16),dp(32)); editor.setTextSize(16); editor.setSingleLine(false); editor.setHorizontallyScrolling(false); editor.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS); editor.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG); editor.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START); editor.setVisibility(View.GONE); frame.addView(editor,new FrameLayout.LayoutParams(-1,-1));
+        editor=new FlingEditText(this); editor.setGravity(Gravity.TOP); editor.setPadding(dp(16),dp(14),dp(16),dp(32)); editor.setTextSize(16); editor.setSingleLine(false); editor.setHorizontallyScrolling(false); editor.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS); editor.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG); editor.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START); editor.setVisibility(View.GONE); frame.addView(editor,new FrameLayout.LayoutParams(-1,-1));
 
         formatBar=new HorizontalScrollView(this); formatBar.setHorizontalScrollBarEnabled(false); formatBar.setVisibility(View.GONE); formatInner=new LinearLayout(this); formatInner.setGravity(Gravity.CENTER_VERTICAL); formatInner.setPadding(dp(6),dp(5),dp(6),dp(5)); formatBar.addView(formatInner,new HorizontalScrollView.LayoutParams(-2,-1)); root.addView(formatBar,new LinearLayout.LayoutParams(-1,dp(50))); buildFormats();
         bottom=new LinearLayout(this); bottom.setGravity(Gravity.CENTER); bottom.setPadding(dp(8),dp(5),dp(8),dp(5)); root.addView(bottom,new LinearLayout.LayoutParams(-1,dp(54)));
@@ -147,8 +147,7 @@ public class MainActivity extends Activity {
         editor.setScrollbarFadingEnabled(true);
         editor.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
         editor.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
-        editorScroller=new AdjustableScroller(this,editorScrollPercent);
-        editor.setScroller(editorScroller);
+        editor.setFlingSpeedPercent(editorScrollPercent);
         editor.setGravity(Gravity.TOP|Gravity.START);
         editor.setHorizontallyScrolling(false);
         if(Build.VERSION.SDK_INT>=23){
@@ -378,7 +377,7 @@ public class MainActivity extends Activity {
     private void outline(){List<OutlineParser.Heading> hs=OutlineParser.parse(txt());if(hs.isEmpty()){Toast.makeText(this,"لا توجد عناوين في الملف",Toast.LENGTH_SHORT).show();return;}Dialog d=dialog();LinearLayout p=panel("فهرس المستند");ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);sc.addView(list);for(int i=0;i<hs.size();i++){int idx=i;OutlineParser.Heading h=hs.get(i);TextView r=sheetButton(repeat("   ",Math.max(0,h.level-1))+h.title,false);r.setOnClickListener(v->dismissSheet(d,p,()->{if(editing){jumpEditorOffset(Math.min(h.offset,editor.length()));}else preview.evaluateJavascript("window.scrollToHeading("+idx+");",null);}));list.addView(r,buttonLp());}p.addView(sc,new LinearLayout.LayoutParams(-1,0,1));TextView close=sheetButton("إغلاق",false);close.setOnClickListener(v->dismissSheet(d,p,null));p.addView(close,buttonLp());showDialog(d,p,true);}
     private void pdf(){if(homeMode)return;render();if(editing)setEditing(false);preview.postDelayed(()->{try{PrintManager pm=(PrintManager)getSystemService(Context.PRINT_SERVICE);PrintDocumentAdapter a=preview.createPrintDocumentAdapter(stripMd(currentName));pm.print(stripMd(currentName),a,null);}catch(Exception e){error("تعذر بدء التصدير",e);}},650);}
     private void share(){if(homeMode)return;if(currentUri==null||dirty){save(this::share);return;}Intent i=new Intent(Intent.ACTION_SEND);i.setType("text/markdown");i.putExtra(Intent.EXTRA_STREAM,currentUri);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);try{startActivity(Intent.createChooser(i,"مشاركة الملف"));}catch(Exception e){error("تعذر مشاركة الملف",e);}}
-    private void about(){message("MD Reader 0.8.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
+    private void about(){message("MD Reader 0.8.1","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
 
     private void speechMenu(){
         List<Action>a=new ArrayList<>();
@@ -501,10 +500,10 @@ public class MainActivity extends Activity {
 
     private void editorScrollSettings(){
         Dialog d=dialog();LinearLayout p=panel("سرعة تمرير التحرير");
-        TextView info=label("100% = سرعة Android الافتراضية. خفّض النسبة لتمرير أهدأ أو ارفعها لانتقال أسرع عند السحب والإفلات.",13,muted,false);p.addView(info,textLp());
+        TextView info=label("هذه النسبة تتحكم بسرعة الانزلاق بعد رفع إصبعك. اسحب ثم ارفع إصبعك ليستمر المحرر بالتمرير، والمس الشاشة مرة أخرى لإيقافه فورًا.",13,muted,false);p.addView(info,textLp());
         TextView value=label(editorScrollPercent+"%",24,text,true);value.setGravity(Gravity.CENTER);p.addView(value,new LinearLayout.LayoutParams(-1,dp(48)));
         SeekBar speed=new SeekBar(this);speed.setMax(EDITOR_SCROLL_MAX-EDITOR_SCROLL_MIN);speed.setProgress(editorScrollPercent-EDITOR_SCROLL_MIN);
-        speed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int x,boolean fromUser){editorScrollPercent=EDITOR_SCROLL_MIN+x;value.setText(editorScrollPercent+"%");if(editorScroller!=null)editorScroller.setSpeedPercent(editorScrollPercent);}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){prefs.edit().putInt(PREF_EDITOR_SCROLL,editorScrollPercent).apply();}});
+        speed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int x,boolean fromUser){editorScrollPercent=EDITOR_SCROLL_MIN+x;value.setText(editorScrollPercent+"%");editor.setFlingSpeedPercent(editorScrollPercent);}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){prefs.edit().putInt(PREF_EDITOR_SCROLL,editorScrollPercent).apply();}});
         p.addView(speed,new LinearLayout.LayoutParams(-1,dp(56)));
         LinearLayout row=new LinearLayout(this);TextView reset=mini("إعادة إلى 100%",false),done=mini("تم",true);reset.setOnClickListener(v->{editorScrollPercent=EDITOR_SCROLL_DEFAULT;speed.setProgress(EDITOR_SCROLL_DEFAULT-EDITOR_SCROLL_MIN);prefs.edit().putInt(PREF_EDITOR_SCROLL,editorScrollPercent).apply();});done.setOnClickListener(v->{prefs.edit().putInt(PREF_EDITOR_SCROLL,editorScrollPercent).apply();dismissSheet(d,p,null);});row.addView(reset,weight(1,0,4));row.addView(done,weight(1,4,0));p.addView(row,new LinearLayout.LayoutParams(-1,dp(50)));
         showDialog(d,p,false);
@@ -517,8 +516,9 @@ public class MainActivity extends Activity {
         if(!editing)setEditing(true);
         Dialog d=dialog();LinearLayout p=panel("بحث واستبدال");
         p.addView(label("يقبل نصوصًا كاملة متعددة الأسطر، العربية والإنجليزية والرموز والعلامات بدون تقييد بنوع كلمة.",12,muted,false),textLp());
-        EditText query=multiLineField("ابحث عن…",searchInput.getText().toString(),2);
-        EditText replacement=multiLineField("استبدل بـ… (يمكن تركه فارغًا للحذف)","",2);
+        EditText query=multiLineField("ابحث عن…",searchInput.getText().toString(),1);
+        EditText replacement=multiLineField("استبدل بـ… (يمكن تركه فارغًا للحذف)","",1);
+        query.setMinLines(1);query.setMaxLines(4);replacement.setMinLines(1);replacement.setMaxLines(4);
         p.addView(query,textLp());p.addView(replacement,textLp());
         final boolean[] matchCase={false};
         TextView mode=mini("Aa  غير حساس لحالة الأحرف",false);p.addView(mode,new LinearLayout.LayoutParams(-1,dp(46)));
@@ -532,7 +532,7 @@ public class MainActivity extends Activity {
         TextView replaceAll=sheetButton("استبدال الكل",false);
         replaceAll.setOnClickListener(v->{int n=replaceAllSearch(query.getText().toString(),replacement.getText().toString(),matchCase[0]);if(n>0){searchInput.setText(query.getText().toString());status.setText("تم استبدال "+n+" نتيجة");}});p.addView(replaceAll,buttonLp());
         TextView close=sheetButton("إغلاق",false);close.setOnClickListener(v->dismissSheet(d,p,null));p.addView(close,buttonLp());
-        refresh.run();showDialog(d,p,true);query.requestFocus();keyboard(query);
+        refresh.run();showDialog(d,p,false);query.requestFocus();keyboard(query);
     }
 
     private int replaceCurrentSearch(String q,String replacement,boolean matchCase){
@@ -562,7 +562,28 @@ public class MainActivity extends Activity {
     private void error(String t,Exception e){String m=e==null?"حدث خطأ غير معروف":e.getMessage();if(m==null||m.isEmpty())m=e==null?"Error":e.getClass().getSimpleName();message(t,m);}
 
     private static final class Action{final String text;final Runnable run;final boolean danger;Action(String t,Runnable r,boolean d){text=t;run=r;danger=d;}}
-    private void sheet(String t,Action...aa){Dialog d=dialog();LinearLayout p=panel(t);for(Action a:aa){TextView b=sheetButton(a.text,a.danger);b.setOnClickListener(v->dismissSheet(d,p,a.run));p.addView(b,buttonLp());}showDialog(d,p,false);}
+    private void sheet(String t,Action...aa){
+        Dialog d=dialog();
+        LinearLayout p=panel(t);
+        boolean scrollable=aa!=null&&aa.length>7;
+        LinearLayout target=p;
+        if(scrollable){
+            ScrollView sc=new ScrollView(this);
+            sc.setFillViewport(false);
+            sc.setVerticalScrollBarEnabled(true);
+            LinearLayout list=new LinearLayout(this);
+            list.setOrientation(LinearLayout.VERTICAL);
+            sc.addView(list,new ScrollView.LayoutParams(-1,-2));
+            p.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
+            target=list;
+        }
+        if(aa!=null)for(Action a:aa){
+            TextView b=sheetButton(a.text,a.danger);
+            b.setOnClickListener(v->dismissSheet(d,p,a.run));
+            target.addView(b,buttonLp());
+        }
+        showDialog(d,p,scrollable);
+    }
     private void choice(String t,String m,Action...aa){Dialog d=dialog();LinearLayout p=panel(t);p.addView(label(m,15,muted,false),textLp());for(Action a:aa){TextView b=sheetButton(a.text,a.danger);b.setOnClickListener(v->dismissSheet(d,p,a.run));p.addView(b,buttonLp());}showDialog(d,p,false);}
     private void message(String t,String m){choice(t,m,new Action("حسنًا",null,false));}
     private Dialog dialog(){Dialog d=new Dialog(this);d.requestWindowFeature(Window.FEATURE_NO_TITLE);return d;}
@@ -587,6 +608,7 @@ public class MainActivity extends Activity {
             w.setDimAmount(.62f);
             w.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             w.setWindowAnimations(0);
+            w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
         d.setOnShowListener(x->{
             Window shown=d.getWindow();
