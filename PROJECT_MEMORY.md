@@ -90,10 +90,12 @@ APK v0.7 debug كان تقريبًا 65–67 MB. السبب الأكبر كان 
 ### د) تنظيف المعمارية
 - المصدر النهائي أصبح مباشرًا في `app/src/main/...`.
 - workflow النهائي لا يعيد تركيب `MainActivity` من أجزاء أو patches.
+- بقي workflow واحد فقط للإصدار الحالي: `build-apk.yml`.
 - حذفت workflows الانتقالية بعد انتهاء دورها.
-- حذفت `.ci` و`.src-v03` وسلسلة patches/source chunks القديمة من فرع v0.8.
+- حذفت `.ci` و`.src-v03` و`.src-parts` وسلسلة patches/source chunks القديمة من فرع v0.8.
 - حذفت `apply_editor_ux_v07.py` و`fix_editor_ux_v07_blocks.py` لأن البناء لم يعد يعتمد عليهما.
 - أبقينا فقط أدوات الاختبار والأصول المطلوبة للبناء الحالي.
+- README تم تحديثه ليتوافق مع v0.8 ومعمارية البناء الحالية بدل وصف debug القديم.
 
 ## 6) البناء والإصدار
 ### Gradle
@@ -106,8 +108,9 @@ APK v0.7 debug كان تقريبًا 65–67 MB. السبب الأكبر كان 
 ### لماذا APK وAAB يبنيان منفصلين؟
 Android Gradle Plugin رفض الجمع بين multi-APK ABI outputs وApp Bundle مع resource shrinking في build graph واحد بسبب تعدد ملفات `shrunk-resources`. الحل المعتمد فصل العمليتين، وليس تعطيل shrinking أو حذف مكتبة.
 
-### آخر بناء وظيفي كامل مؤكد
-GitHub Actions run: **34537337192** — النتيجة: **success**.
+### آخر بناء تأكيدي كامل
+GitHub Actions run: **34538180306** — النتيجة: **success**.
+Commit المختبر: `50902a78bf23e84380a5e58bd88b3a5cb5d4b7a7`.
 نجح فيه:
 - direct-source architecture assertions.
 - Transform smoke tests.
@@ -120,7 +123,7 @@ GitHub Actions run: **34537337192** — النتيجة: **success**.
 - ABI/output verification.
 - artifact upload.
 
-بعد ذلك تم حذف مخلفات migration غير المستخدمة، وبدأ CI تأكيدي جديد على commit التنظيف.
+التغييرات اللاحقة لذلك commit كانت تنظيفًا إضافيًا لمخلفات مصدر قديمة وتحديث README/PROJECT_MEMORY فقط؛ لم تغيّر كود التطبيق أو Gradle أو workflow المبني.
 
 ## 7) التوقيع الدائم
 - مفتاح Release ثابت تم إنشاؤه وتسليمه لصاحب المشروع خارج Git.
@@ -131,16 +134,17 @@ GitHub Actions run: **34537337192** — النتيجة: **success**.
   `3D:7F:96:3D:B1:C9:B5:21:1D:3A:7F:0C:22:7D:20:81:08:47:4B:39:08:02:AF:A6:89:11:33:A0:35:BF:83:5A`
 - الصلاحية حتى 2054-01-26.
 - APK النهائي تم التحقق منه بواسطة Android `apksigner`: v2=true وv3=true، signer واحد، RSA 4096-bit، والبصمة مطابقة.
-- AAB النهائي تم توقيعه بنفس المفتاح وتحقق `jarsigner` منه بنجاح. كونه self-signed طبيعي لمفتاح توقيع تطبيق خاص ولا يعني فشل التوقيع.
+- AAB النهائي تم توقيعه بنفس المفتاح وتحقق `jarsigner` منه بنجاح.
+- تم التحقق بعد التوقيع أن payload المعبأ للتطبيق لم يتغير؛ أضيفت فقط بيانات التوقيع.
 
 ### قاعدة التحديثات
 قد يلزم حذف نسخة debug القديمة **مرة واحدة فقط** بسبب اختلاف شهادة debug عن شهادة release الجديدة. بعد تثبيت v0.8.0 الموقعة، الإصدارات التالية يجب أن تستخدم نفس المفتاح ونفس package مع رفع versionCode، وعندها تثبت كتحديث فوق النسخة السابقة.
 
 ## 8) بصمات ملفات التسليم النهائية
 - `MD-Reader-v0.8.0-arm64-release.apk`
-  - SHA-256: `72da5993bf3c3f0eb88bc068eaef4109194d55ff939211ecd89cd2ee153dde6f`
+  - SHA-256: `c21167a87f51b68c99491bba49c69267141abd7d7491f2ffff3a36e370b29de9`
 - `MD-Reader-v0.8.0-release.aab`
-  - SHA-256: `0f2d0ba9ba895859b6e015452bc2233bcd49c392b44147bcc7c8dcceb4145376`
+  - SHA-256: `3ddecc8e802c18317a7d09baf8e2a6ebb204606f98a2bbbc2b1ca792c3b4d4cc`
 
 ## 9) معايير قبول v0.8
 - [x] `MainActivity.java` مصدر مباشر والبناء لا يعتمد على patch chain.
@@ -155,7 +159,7 @@ GitHub Actions run: **34537337192** — النتيجة: **success**.
 - [x] APK النهائي موقّع ومتحقق منه.
 - [x] AAB النهائي موقّع ومتحقق منه.
 - [x] قياس الحجم الفعلي موثق.
-- [x] CI كامل ناجح على الكود الوظيفي.
+- [x] CI تأكيدي كامل ناجح بعد تنظيف patch-chain.
 - [ ] اختبار الإحساس الفعلي للتمرير على هاتف المستخدم بعد تثبيت APK؛ هذا لا يمكن محاكاته بالكامل في CI بلا لمس جهاز حقيقي.
 
 ## 10) حالة المشروع الآن
