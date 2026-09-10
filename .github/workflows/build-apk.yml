@@ -1,66 +1,53 @@
-name: Build MD Reader APK
+name: Build MD Reader v0.8.1 Release
 
 on:
   workflow_dispatch:
   push:
-    branches: [main, v0.6-dev]
+    branches: [v0.8-work]
+    paths:
+      - 'app/**'
+      - 'tools/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - '.github/workflows/build-apk.yml'
+      - 'PROJECT_MEMORY.md'
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Checkout
+      - name: Checkout normalized source
         uses: actions/checkout@v4
 
-      - name: Reconstruct and patch v0.6 MainActivity
+      - name: Assert direct-source architecture and v0.8.1 fixes
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/v03parts.sha256 <<'EOF'
-          a3f1d797de1e0a352196b0438d8402a812d22e4b57b8d22b5b31a121be1f807e  .src-v03/MainActivity.java.gz.b64.00
-          1d0787fa2558b582e432748be52636e736b54103e6f710484410e1447f9ee176  .src-v03/MainActivity.java.gz.b64.01
-          055d8088fea7bcbb1683ecc8eaf227ee47a5bcff5a04b44e2279a880eb10777f  .src-v03/MainActivity.java.gz.b64.02
-          db0adc95689cbb6d2caa3b523e204189ff2ee0f3092f5c0fc5fafed8b9b2442a  .src-v03/MainActivity.java.gz.b64.03
-          EOF
-          sha256sum --check --strict /tmp/v03parts.sha256
-          mkdir -p app/src/main/java/app/mdreader/mobile
-          cat .src-v03/MainActivity.java.gz.b64.* | base64 --decode | gzip -dc > app/src/main/java/app/mdreader/mobile/MainActivity.java
-          echo 'ca2b495d74e56663a815641e793c750d29643f612a2ea50fc2164ddec52ca04f  app/src/main/java/app/mdreader/mobile/MainActivity.java' | sha256sum --check --strict
-          patch -p1 < .ci/v0.3.1-bottom-sheet.patch
-          echo '051a55078d3dbecaca37628bb1a8eca0bf5cd305c1fb7472041e1eba2bd331bd  app/src/main/java/app/mdreader/mobile/MainActivity.java' | sha256sum --check --strict
-          patch -p1 < .ci/v0.4-mainactivity.patch
-          cat .ci/v0.5-mainactivity.patch.* > /tmp/v0.5-mainactivity.patch
-          echo 'f608cd4a045796449224fb648a2b4a663361d4654f58716aac960bcc71c7ed8e  /tmp/v0.5-mainactivity.patch' | sha256sum --check --strict
-          patch -p1 < /tmp/v0.5-mainactivity.patch
-          patch -p1 < .ci/v0.6-mainactivity.patch
-          grep -q 'إعدادات الصوت' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'SpeechSettingsDialog.show' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'new SpeechReader' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'new ReadingStore' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'DeepSeek' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'PROVIDER_DEEPSEEK' app/src/main/java/app/mdreader/mobile/AiTranslationService.java
-          grep -q 'https://api.openai.com/v1/audio/speech' app/src/main/java/app/mdreader/mobile/OpenAiSpeechClient.java
-          grep -q 'gpt-4o-mini-tts' app/src/main/java/app/mdreader/mobile/OpenAiSpeechClient.java
-          grep -q 'android.intent.action.TTS_SERVICE' app/src/main/AndroidManifest.xml
-          grep -q "versionName '0.6.0'" app/build.gradle
-
-      - name: Reconstruct exact launcher artwork
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p app/src/main/res/drawable-nodpi
-          cat .ci/icon-v041.b64.* | base64 --decode > app/src/main/res/drawable-nodpi/ic_launcher_art.webp
-          echo '9497b27e75ffe508d7008b429f3e4350bb5c6601c38e32fe69b1af63eb864823  app/src/main/res/drawable-nodpi/ic_launcher_art.webp' | sha256sum --check --strict
+          test -s app/src/main/java/app/mdreader/mobile/MainActivity.java
+          test -s app/src/main/java/app/mdreader/mobile/SearchReplaceEngine.java
+          test -s app/src/main/java/app/mdreader/mobile/FlingEditText.java
           test -s app/src/main/res/drawable-nodpi/ic_launcher_art.webp
-          grep -q '@drawable/ic_launcher_art' app/src/main/res/drawable/ic_launcher_foreground.xml
-          grep -q '@mipmap/ic_launcher' app/src/main/AndroidManifest.xml
+          ! grep -q 'apply_editor_ux_v07.py' .github/workflows/build-apk.yml
+          ! grep -q 'v0.5-mainactivity.patch' .github/workflows/build-apk.yml
+          ! grep -q 'AdjustableScroller' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q "versionName '0.8.1'" app/build.gradle
+          grep -q "versionCode 11" app/build.gradle
+          grep -q 'new FlingEditText(this)' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'setFlingSpeedPercent' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'boolean scrollable=aa!=null&&aa.length>7' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'SOFT_INPUT_ADJUST_RESIZE' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'searchReplaceDialog' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'PREF_EDITOR_SCROLL' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'breaks:true' app/src/main/assets/reader.html
+          grep -q 'android:windowSoftInputMode="adjustResize"' app/src/main/AndroidManifest.xml
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -76,26 +63,33 @@ jobs:
         with:
           gradle-version: '9.5.0'
 
-      - name: Fetch pinned Markdown renderer assets
+      - name: Fetch pinned renderer assets
         run: bash tools/fetch-vendor-assets.sh
 
       - name: Run pure Java smoke tests
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p build/smoke
           javac -d build/smoke \
             app/src/main/java/app/mdreader/mobile/MarkdownTransforms.java \
             app/src/main/java/app/mdreader/mobile/OutlineParser.java \
             app/src/main/java/app/mdreader/mobile/MarkdownTranslationPlan.java \
             app/src/main/java/app/mdreader/mobile/MarkdownSpeechPlan.java \
+            app/src/main/java/app/mdreader/mobile/SearchReplaceEngine.java \
             tools/TransformSmokeTest.java \
             tools/TranslationPlanSmokeTest.java \
-            tools/SpeechPlanSmokeTest.java
+            tools/SpeechPlanSmokeTest.java \
+            tools/SearchReplaceSmokeTest.java
           java -cp build/smoke TransformSmokeTest
           java -cp build/smoke app.mdreader.mobile.TranslationPlanSmokeTest
           java -cp build/smoke app.mdreader.mobile.SpeechPlanSmokeTest
+          java -cp build/smoke app.mdreader.mobile.SearchReplaceSmokeTest
 
       - name: Check reader JavaScript syntax
+        shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           s = Path('app/src/main/assets/reader.html').read_text()
@@ -105,28 +99,77 @@ jobs:
           PY
           node --check /tmp/reader-inline.js
 
-      - name: Build debug APK
-        run: gradle --no-daemon :app:assembleDebug
-
-      - name: Verify APK and v0.6 resources
+      - name: Build optimized ARM64 release APK
         shell: bash
         run: |
           set -euo pipefail
-          APK=app/build/outputs/apk/debug/app-debug.apk
-          test -s "$APK"
-          sha256sum "$APK"
-          unzip -l "$APK" > /tmp/apk-list.txt
-          grep -q 'res/mipmap-anydpi-v26/ic_launcher.xml' /tmp/apk-list.txt
-          grep -q 'ic_launcher_art.webp' /tmp/apk-list.txt
-          find app/build -name 'SpeechReader.class' -print -quit | grep -q .
-          find app/build -name 'OpenAiSpeechClient.class' -print -quit | grep -q .
-          find app/build -name 'SpeechSettingsDialog.class' -print -quit | grep -q .
-          find app/build -name 'ReadingStore.class' -print -quit | grep -q .
+          mkdir -p dist
+          gradle --no-daemon :app:assembleRelease -PmdReaderDirectArm64=true
+          ARM64_APK=$(find app/build/outputs/apk/release -type f -name '*arm64*v8a*release*.apk' | head -n1)
+          if [ -z "$ARM64_APK" ]; then
+            echo 'ARM64 release APK was not generated.' >&2
+            find app/build/outputs/apk -type f -print || true
+            exit 1
+          fi
+          cp "$ARM64_APK" dist/MD-Reader-v0.8.1-arm64-release-unsigned.apk
 
-      - name: Upload APK
+      - name: Build optimized App Bundle separately
+        shell: bash
+        run: |
+          set -euo pipefail
+          # AGP resource shrinking cannot combine ABI multi-APK outputs and a
+          # bundle in the same build graph. Clean split intermediates first,
+          # then build the bundle with ABI splitting disabled.
+          gradle --no-daemon clean
+          gradle --no-daemon :app:bundleRelease
+          AAB=$(find app/build/outputs/bundle/release -type f -name '*.aab' | head -n1)
+          if [ -z "$AAB" ]; then
+            echo 'Release App Bundle was not generated.' >&2
+            find app/build/outputs/bundle -type f -print || true
+            exit 1
+          fi
+          cp "$AAB" dist/MD-Reader-v0.8.1-release-unsigned.aab
+
+      - name: Verify optimized outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s dist/MD-Reader-v0.8.1-arm64-release-unsigned.apk
+          test -s dist/MD-Reader-v0.8.1-release-unsigned.aab
+
+          unzip -l dist/MD-Reader-v0.8.1-arm64-release-unsigned.apk > /tmp/apk-list.txt
+          grep -q 'lib/arm64-v8a/libtranslate_jni.so' /tmp/apk-list.txt
+          ! grep -q 'lib/x86_64/libtranslate_jni.so' /tmp/apk-list.txt
+          ! grep -q 'lib/x86/libtranslate_jni.so' /tmp/apk-list.txt
+          ! grep -q 'lib/armeabi-v7a/libtranslate_jni.so' /tmp/apk-list.txt
+
+          unzip -l dist/MD-Reader-v0.8.1-release-unsigned.aab > /tmp/aab-list.txt
+          grep -q 'base/lib/arm64-v8a/libtranslate_jni.so' /tmp/aab-list.txt
+          grep -q 'base/lib/armeabi-v7a/libtranslate_jni.so' /tmp/aab-list.txt
+
+          mkdir -p dist/signing-tools/lib
+          cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" dist/signing-tools/apksigner
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" dist/signing-tools/lib/apksigner.jar
+          chmod +x dist/signing-tools/apksigner
+
+          sha256sum dist/*.apk dist/*.aab > dist/SHA256SUMS.txt
+          {
+            echo "version=0.8.1"
+            echo "versionCode=11"
+            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.8.1-arm64-release-unsigned.apk)"
+            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.8.1-release-unsigned.aab)"
+            echo "minified=true"
+            echo "resources_shrunk=true"
+            echo "apk_abi=arm64-v8a"
+            echo "signed=false"
+          } > dist/release-info.txt
+          cat dist/release-info.txt
+          cat dist/SHA256SUMS.txt
+
+      - name: Upload unsigned release package for offline signing
         uses: actions/upload-artifact@v4
         with:
-          name: MD-Reader-v0.6.0-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: MD-Reader-v0.8.1-release-unsigned
+          path: dist/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7

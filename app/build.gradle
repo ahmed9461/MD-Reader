@@ -2,6 +2,14 @@ plugins {
     id 'com.android.application'
 }
 
+
+def releaseStorePath = System.getenv('MD_READER_KEYSTORE_PATH')
+def releaseStorePassword = System.getenv('MD_READER_KEYSTORE_PASSWORD')
+def releaseKeyAlias = System.getenv('MD_READER_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('MD_READER_KEY_PASSWORD')
+def hasReleaseSigning = [releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword].every { it != null && !it.isBlank() }
+def buildDirectArm64Apk = providers.gradleProperty('mdReaderDirectArm64').orNull == 'true'
+
 android {
     namespace 'app.mdreader.mobile'
     compileSdk 36
@@ -10,15 +18,44 @@ android {
         applicationId 'app.mdreader.mobile'
         minSdk 26
         targetSdk 36
-        versionCode 8
-        versionName '0.6.0'
+        versionCode 11
+        versionName '0.8.1'
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStorePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
-            minifyEnabled false
-            shrinkResources false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    // A direct sideload APK is built only for arm64-v8a so one phone does not
+    // carry ML Kit's native libraries for unrelated CPU architectures. App
+    // Bundles are built in a separate Gradle invocation with this flag disabled,
+    // allowing Google Play to perform its own device-specific ABI delivery.
+    splits {
+        abi {
+            enable buildDirectArm64Apk
+            reset()
+            if (buildDirectArm64Apk) {
+                include 'arm64-v8a'
+            }
+            universalApk false
         }
     }
 
