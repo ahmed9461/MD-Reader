@@ -41,7 +41,7 @@ jobs:
           grep -q 'android:windowSoftInputMode="adjustResize"' app/src/main/AndroidManifest.xml
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -93,35 +93,59 @@ jobs:
           PY
           node --check /tmp/reader-inline.js
 
-      - name: Build optimized release APKs and App Bundle
+      - name: Build optimized ARM64 release APK
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon :app:assembleRelease :app:bundleRelease
+          mkdir -p dist
+          gradle --no-daemon :app:assembleRelease -PmdReaderDirectArm64=true
+          ARM64_APK=$(find app/build/outputs/apk/release -type f -name '*arm64*v8a*release*.apk' | head -n1)
+          if [ -z "$ARM64_APK" ]; then
+            echo 'ARM64 release APK was not generated.' >&2
+            find app/build/outputs/apk -type f -print || true
+            exit 1
+          fi
+          cp "$ARM64_APK" dist/MD-Reader-v0.8.0-arm64-release-unsigned.apk
+
+      - name: Build optimized App Bundle separately
+        shell: bash
+        run: |
+          set -euo pipefail
+          # AGP resource shrinking cannot combine ABI multi-APK outputs and a
+          # bundle in the same build graph. Clean split intermediates first,
+          # then build the bundle with ABI splitting disabled.
+          gradle --no-daemon clean
+          gradle --no-daemon :app:bundleRelease
+          AAB=$(find app/build/outputs/bundle/release -type f -name '*.aab' | head -n1)
+          if [ -z "$AAB" ]; then
+            echo 'Release App Bundle was not generated.' >&2
+            find app/build/outputs/bundle -type f -print || true
+            exit 1
+          fi
+          cp "$AAB" dist/MD-Reader-v0.8.0-release-unsigned.aab
 
       - name: Verify optimized outputs
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist
-          ARM64_APK=$(find app/build/outputs/apk/release -type f -name '*arm64*v8a*release*.apk' | head -n1)
-          if [ -z "$ARM64_APK" ]; then
-            echo 'ARM64 release APK was not generated.' >&2
-            find app/build/outputs/apk -type f -maxdepth 5 -print
-            exit 1
-          fi
-          AAB=$(find app/build/outputs/bundle/release -type f -name '*.aab' | head -n1)
-          test -n "$AAB"
-          cp "$ARM64_APK" dist/MD-Reader-v0.8.0-arm64-release-unsigned.apk
-          cp "$AAB" dist/MD-Reader-v0.8.0-release-unsigned.aab
-          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" dist/apksigner.jar
+          test -s dist/MD-Reader-v0.8.0-arm64-release-unsigned.apk
+          test -s dist/MD-Reader-v0.8.0-release-unsigned.aab
+
           unzip -l dist/MD-Reader-v0.8.0-arm64-release-unsigned.apk > /tmp/apk-list.txt
           grep -q 'lib/arm64-v8a/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86_64/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/armeabi-v7a/libtranslate_jni.so' /tmp/apk-list.txt
+
           unzip -l dist/MD-Reader-v0.8.0-release-unsigned.aab > /tmp/aab-list.txt
           grep -q 'base/lib/arm64-v8a/libtranslate_jni.so' /tmp/aab-list.txt
+          grep -q 'base/lib/armeabi-v7a/libtranslate_jni.so' /tmp/aab-list.txt
+
+          mkdir -p dist/signing-tools/lib
+          cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" dist/signing-tools/apksigner
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" dist/signing-tools/lib/apksigner.jar
+          chmod +x dist/signing-tools/apksigner
+
           sha256sum dist/*.apk dist/*.aab > dist/SHA256SUMS.txt
           {
             echo "version=0.8.0"
