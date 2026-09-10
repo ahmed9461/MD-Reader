@@ -33,18 +33,7 @@ See `PROJECT_MEMORY.md` for the project source of truth, implementation decision
 
 ## Release build
 
-GitHub Actions workflow `Build MD Reader v0.8.1 Release`:
-
-1. validates the direct-source architecture and v0.8.1 editor/dialog fixes;
-2. fetches pinned renderer assets;
-3. runs Markdown, translation, speech and search/replace smoke tests;
-4. syntax-checks the inline reader JavaScript;
-5. builds an optimized ARM64 release APK with R8/resource shrinking;
-6. builds the App Bundle separately;
-7. verifies APK/AAB native ABI contents;
-8. uploads the unsigned release package for offline signing with the permanent release key.
-
-The direct APK intentionally contains only `arm64-v8a` native libraries to avoid shipping ML Kit translation binaries for unrelated CPU architectures. The AAB retains the required architectures for store-side device delivery.
+GitHub Actions workflow `Build MD Reader v0.8.1 Release` validates the direct-source architecture and v0.8.1 editor/dialog fixes, runs smoke tests and JavaScript syntax checks, builds optimized ARM64 APK and AAB outputs, verifies ABI contents, and uploads the unsigned release package for signing with the permanent release key.
 
 ## Release identity
 
