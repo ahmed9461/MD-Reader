@@ -16,6 +16,13 @@ replacements = [
         r'''        String after=b<e.length()&&e.charAt(b)!='\n'?"\\n\\n":"";''',
         r'''        String after=b<e.length()&&e.charAt(b)!='\n'?System.lineSeparator()+System.lineSeparator():"";''',
     ),
+    (
+        r'''        editor.setOverScrollMode(View.OVER_SCROLL_NEVER);''',
+        r'''        editor.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        android.widget.Scroller editorScroller=new android.widget.Scroller(this);
+        editorScroller.setFriction(android.view.ViewConfiguration.getScrollFriction()*1.35f);
+        editor.setScroller(editorScroller);''',
+    ),
 ]
 
 for old, new in replacements:
@@ -24,4 +31,4 @@ for old, new in replacements:
     text = text.replace(old, new, 1)
 
 path.write_text(text, encoding="utf-8")
-print("Fixed v0.7 Markdown block newline insertion")
+print("Fixed v0.7 Markdown block newlines and editor scroll friction")
