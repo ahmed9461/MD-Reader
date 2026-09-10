@@ -37,11 +37,4 @@ final class AdjustableScroller extends Scroller {
         super.fling(startX, startY, scaleVelocity(velocityX), scaleVelocity(velocityY),
                 minX, maxX, minY, maxY);
     }
-
-    @Override
-    public void fling(int startX, int startY, int velocityX, int velocityY,
-                      int minX, int maxX, int minY, int maxY, int overX, int overY) {
-        super.fling(startX, startY, scaleVelocity(velocityX), scaleVelocity(velocityY),
-                minX, maxX, minY, maxY, overX, overY);
-    }
 }
