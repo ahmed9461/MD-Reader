@@ -129,7 +129,7 @@ def patch_main_activity():
         editor.setVerticalScrollBarEnabled(true);
         editor.setScrollbarFadingEnabled(true);
         editor.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
-        editor.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        editor.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         editor.setGravity(Gravity.TOP|Gravity.START);
         editor.setHorizontallyScrolling(false);
         if(Build.VERSION.SDK_INT>=23){
@@ -140,24 +140,32 @@ def patch_main_activity():
 
     private void enhanceEditorToolbar(){
         if(formatInner==null)return;
-        quickNavBtn=mini("⇅ تنقل",false);
+        quickNavBtn=mini("⇅",false);
+        quickNavBtn.setTextSize(21);
+        quickNavBtn.setGravity(Gravity.CENTER);
         quickNavBtn.setContentDescription("التنقل السريع داخل المستند");
+        quickNavBtn.setTooltipText("التنقل السريع");
         quickNavBtn.setOnClickListener(v->documentNavigation());
-        extraToolsBtn=mini("+ أدوات",false);
+
+        extraToolsBtn=mini("＋",false);
+        extraToolsBtn.setTextSize(23);
+        extraToolsBtn.setGravity(Gravity.CENTER);
         extraToolsBtn.setContentDescription("أدوات Markdown إضافية");
+        extraToolsBtn.setTooltipText("أدوات إضافية");
         extraToolsBtn.setOnClickListener(v->extraMarkdownTools());
-        LinearLayout.LayoutParams navLp=new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,dp(42));
-        navLp.setMarginEnd(dp(6));
-        LinearLayout.LayoutParams toolsLp=new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,dp(42));
-        toolsLp.setMarginEnd(dp(6));
+
+        LinearLayout.LayoutParams navLp=new LinearLayout.LayoutParams(dp(48),dp(42));
+        navLp.setMarginEnd(dp(2));
+        LinearLayout.LayoutParams toolsLp=new LinearLayout.LayoutParams(dp(48),dp(42));
+        toolsLp.setMarginEnd(dp(2));
         formatInner.addView(extraToolsBtn,0,toolsLp);
         formatInner.addView(quickNavBtn,0,navLp);
         styleEditorToolbarExtras();
     }
 
     private void styleEditorToolbarExtras(){
-        if(quickNavBtn!=null){quickNavBtn.setTextColor(text);quickNavBtn.setBackground(round(bg,border,10));}
-        if(extraToolsBtn!=null){extraToolsBtn.setTextColor(text);extraToolsBtn.setBackground(round(bg,border,10));}
+        if(quickNavBtn!=null){quickNavBtn.setTextColor(text);quickNavBtn.setBackgroundColor(Color.TRANSPARENT);}
+        if(extraToolsBtn!=null){extraToolsBtn.setTextColor(text);extraToolsBtn.setBackgroundColor(Color.TRANSPARENT);}
     }
 
     private void saveEditorPosition(){
