@@ -8,6 +8,7 @@ def releaseStorePassword = System.getenv('MD_READER_KEYSTORE_PASSWORD')
 def releaseKeyAlias = System.getenv('MD_READER_KEY_ALIAS')
 def releaseKeyPassword = System.getenv('MD_READER_KEY_PASSWORD')
 def hasReleaseSigning = [releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword].every { it != null && !it.isBlank() }
+def buildDirectArm64Apk = providers.gradleProperty('mdReaderDirectArm64').orNull == 'true'
 
 android {
     namespace 'app.mdreader.mobile'
@@ -43,13 +44,17 @@ android {
         }
     }
 
-    // Direct APKs are ABI-specific to avoid shipping every ML Kit native library
-    // to one phone. App Bundles still let Google Play deliver device-specific APKs.
+    // A direct sideload APK is built only for arm64-v8a so one phone does not
+    // carry ML Kit's native libraries for unrelated CPU architectures. App
+    // Bundles are built in a separate Gradle invocation with this flag disabled,
+    // allowing Google Play to perform its own device-specific ABI delivery.
     splits {
         abi {
-            enable true
+            enable buildDirectArm64Apk
             reset()
-            include 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
+            if (buildDirectArm64Apk) {
+                include 'arm64-v8a'
+            }
             universalApk false
         }
     }
