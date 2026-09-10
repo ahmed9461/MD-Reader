@@ -1,0 +1,33 @@
+name: Materialize launcher asset
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [v0.8-work]
+    paths: ['.github/workflows/materialize-launcher.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v0.8-work
+
+      - name: Restore exact launcher artwork once
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/res/drawable-nodpi
+          cat .ci/icon-v041.b64.* | base64 --decode > app/src/main/res/drawable-nodpi/ic_launcher_art.webp
+          echo '9497b27e75ffe508d7008b429f3e4350bb5c6601c38e32fe69b1af63eb864823  app/src/main/res/drawable-nodpi/ic_launcher_art.webp' | sha256sum --check --strict
+          git config user.name 'md-reader-ci'
+          git config user.email 'md-reader-ci@users.noreply.github.com'
+          git add app/src/main/res/drawable-nodpi/ic_launcher_art.webp
+          git diff --cached --check
+          git commit -m 'Materialize launcher artwork in source tree'
+          git push origin HEAD:v0.8-work
