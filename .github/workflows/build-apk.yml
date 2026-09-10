@@ -38,11 +38,13 @@ jobs:
           patch -p1 < /tmp/v0.5-mainactivity.patch
           patch -p1 < .ci/v0.6-mainactivity.patch
           python3 tools/apply_editor_ux_v07.py
+          python3 tools/fix_editor_ux_v07_blocks.py
           grep -q 'إعدادات الصوت' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'SpeechSettingsDialog.show' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'new SpeechReader' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'new ReadingStore' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'التنقل السريع' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'System.lineSeparator' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'saveEditorState' app/src/main/java/app/mdreader/mobile/ReadingStore.java
           grep -q 'breaks:true' app/src/main/assets/reader.html
           grep -q 'android:windowSoftInputMode="adjustResize"' app/src/main/AndroidManifest.xml
