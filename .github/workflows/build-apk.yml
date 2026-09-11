@@ -3,7 +3,7 @@ name: Build MD Reader v0.8.1 Release
 on:
   workflow_dispatch:
   push:
-    branches: [main, v0.8-work]
+    branches: [main]
     paths:
       - 'app/**'
       - 'tools/**'
@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   release:
@@ -58,10 +59,11 @@ jobs:
       - name: Install Android platform and build tools
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Set up Gradle
+      - name: Set up Gradle without persistent Actions cache
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.5.0'
+          cache-disabled: true
 
       - name: Fetch pinned renderer assets
         run: bash tools/fetch-vendor-assets.sh
@@ -117,9 +119,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # AGP resource shrinking cannot combine ABI multi-APK outputs and a
-          # bundle in the same build graph. Clean split intermediates first,
-          # then build the bundle with ABI splitting disabled.
           gradle --no-daemon clean
           gradle --no-daemon :app:bundleRelease
           AAB=$(find app/build/outputs/bundle/release -type f -name '*.aab' | head -n1)
@@ -136,22 +135,18 @@ jobs:
           set -euo pipefail
           test -s dist/MD-Reader-v0.8.1-arm64-release-unsigned.apk
           test -s dist/MD-Reader-v0.8.1-release-unsigned.aab
-
           unzip -l dist/MD-Reader-v0.8.1-arm64-release-unsigned.apk > /tmp/apk-list.txt
           grep -q 'lib/arm64-v8a/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86_64/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/armeabi-v7a/libtranslate_jni.so' /tmp/apk-list.txt
-
           unzip -l dist/MD-Reader-v0.8.1-release-unsigned.aab > /tmp/aab-list.txt
           grep -q 'base/lib/arm64-v8a/libtranslate_jni.so' /tmp/aab-list.txt
           grep -q 'base/lib/armeabi-v7a/libtranslate_jni.so' /tmp/aab-list.txt
-
           mkdir -p dist/signing-tools/lib
           cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" dist/signing-tools/apksigner
           cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" dist/signing-tools/lib/apksigner.jar
           chmod +x dist/signing-tools/apksigner
-
           sha256sum dist/*.apk dist/*.aab > dist/SHA256SUMS.txt
           {
             echo "version=0.8.1"
@@ -166,10 +161,27 @@ jobs:
           cat dist/release-info.txt
           cat dist/SHA256SUMS.txt
 
-      - name: Upload unsigned release package for offline signing
+      - name: Upload current unsigned release package
         uses: actions/upload-artifact@v4
         with:
           name: MD-Reader-v0.8.1-release-unsigned
           path: dist/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
+
+      - name: Delete older MD Reader artifacts
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired == false) | [.id,.workflow_run.id,.name] | @tsv' > /tmp/artifacts.tsv
+          while IFS=$'\t' read -r id run_id name; do
+            [ -z "${id:-}" ] && continue
+            if [ "$run_id" != "$GITHUB_RUN_ID" ]; then
+              echo "Deleting previous artifact: $name ($id)"
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
+            fi
+          done < /tmp/artifacts.tsv
