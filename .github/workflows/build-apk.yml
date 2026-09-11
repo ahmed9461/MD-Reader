@@ -1,9 +1,9 @@
-name: Build MD Reader v0.8.1 Release
+name: Build MD Reader v0.9.0 Release
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, github-import-v0.9]
     paths:
       - 'app/**'
       - 'tools/**'
@@ -25,25 +25,28 @@ jobs:
       - name: Checkout normalized source
         uses: actions/checkout@v4
 
-      - name: Assert direct-source architecture and v0.8.1 fixes
+      - name: Assert direct-source architecture and v0.9 features
         shell: bash
         run: |
           set -euo pipefail
           test -s app/src/main/java/app/mdreader/mobile/MainActivity.java
           test -s app/src/main/java/app/mdreader/mobile/SearchReplaceEngine.java
           test -s app/src/main/java/app/mdreader/mobile/FlingEditText.java
+          test -s app/src/main/java/app/mdreader/mobile/GitHubMarkdownSource.java
           test -s app/src/main/res/drawable-nodpi/ic_launcher_art.webp
           ! grep -q 'apply_editor_ux_v07.py' .github/workflows/build-apk.yml
           ! grep -q 'v0.5-mainactivity.patch' .github/workflows/build-apk.yml
           ! grep -q 'AdjustableScroller' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q "versionName '0.8.1'" app/build.gradle
-          grep -q "versionCode 11" app/build.gradle
+          grep -q "versionName '0.9.0'" app/build.gradle
+          grep -q "versionCode 12" app/build.gradle
           grep -q 'new FlingEditText(this)' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'setFlingSpeedPercent' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'boolean scrollable=aa!=null&&aa.length>7' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'SOFT_INPUT_ADJUST_RESIZE' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'searchReplaceDialog' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'PREF_EDITOR_SCROLL' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'githubImportDialog' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'GitHubMarkdownSource.download' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'breaks:true' app/src/main/assets/reader.html
           grep -q 'android:windowSoftInputMode="adjustResize"' app/src/main/AndroidManifest.xml
 
@@ -79,14 +82,17 @@ jobs:
             app/src/main/java/app/mdreader/mobile/MarkdownTranslationPlan.java \
             app/src/main/java/app/mdreader/mobile/MarkdownSpeechPlan.java \
             app/src/main/java/app/mdreader/mobile/SearchReplaceEngine.java \
+            app/src/main/java/app/mdreader/mobile/GitHubMarkdownSource.java \
             tools/TransformSmokeTest.java \
             tools/TranslationPlanSmokeTest.java \
             tools/SpeechPlanSmokeTest.java \
-            tools/SearchReplaceSmokeTest.java
+            tools/SearchReplaceSmokeTest.java \
+            tools/GitHubMarkdownSourceSmokeTest.java
           java -cp build/smoke TransformSmokeTest
           java -cp build/smoke app.mdreader.mobile.TranslationPlanSmokeTest
           java -cp build/smoke app.mdreader.mobile.SpeechPlanSmokeTest
           java -cp build/smoke app.mdreader.mobile.SearchReplaceSmokeTest
+          java -cp build/smoke app.mdreader.mobile.GitHubMarkdownSourceSmokeTest
 
       - name: Check reader JavaScript syntax
         shell: bash
@@ -113,7 +119,7 @@ jobs:
             find app/build/outputs/apk -type f -print || true
             exit 1
           fi
-          cp "$ARM64_APK" dist/MD-Reader-v0.8.1-arm64-release-unsigned.apk
+          cp "$ARM64_APK" dist/MD-Reader-v0.9.0-arm64-release-unsigned.apk
 
       - name: Build optimized App Bundle separately
         shell: bash
@@ -127,20 +133,20 @@ jobs:
             find app/build/outputs/bundle -type f -print || true
             exit 1
           fi
-          cp "$AAB" dist/MD-Reader-v0.8.1-release-unsigned.aab
+          cp "$AAB" dist/MD-Reader-v0.9.0-release-unsigned.aab
 
       - name: Verify optimized outputs
         shell: bash
         run: |
           set -euo pipefail
-          test -s dist/MD-Reader-v0.8.1-arm64-release-unsigned.apk
-          test -s dist/MD-Reader-v0.8.1-release-unsigned.aab
-          unzip -l dist/MD-Reader-v0.8.1-arm64-release-unsigned.apk > /tmp/apk-list.txt
+          test -s dist/MD-Reader-v0.9.0-arm64-release-unsigned.apk
+          test -s dist/MD-Reader-v0.9.0-release-unsigned.aab
+          unzip -l dist/MD-Reader-v0.9.0-arm64-release-unsigned.apk > /tmp/apk-list.txt
           grep -q 'lib/arm64-v8a/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86_64/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/armeabi-v7a/libtranslate_jni.so' /tmp/apk-list.txt
-          unzip -l dist/MD-Reader-v0.8.1-release-unsigned.aab > /tmp/aab-list.txt
+          unzip -l dist/MD-Reader-v0.9.0-release-unsigned.aab > /tmp/aab-list.txt
           grep -q 'base/lib/arm64-v8a/libtranslate_jni.so' /tmp/aab-list.txt
           grep -q 'base/lib/armeabi-v7a/libtranslate_jni.so' /tmp/aab-list.txt
           mkdir -p dist/signing-tools/lib
@@ -149,10 +155,10 @@ jobs:
           chmod +x dist/signing-tools/apksigner
           sha256sum dist/*.apk dist/*.aab > dist/SHA256SUMS.txt
           {
-            echo "version=0.8.1"
-            echo "versionCode=11"
-            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.8.1-arm64-release-unsigned.apk)"
-            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.8.1-release-unsigned.aab)"
+            echo "version=0.9.0"
+            echo "versionCode=12"
+            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.9.0-arm64-release-unsigned.apk)"
+            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.9.0-release-unsigned.aab)"
             echo "minified=true"
             echo "resources_shrunk=true"
             echo "apk_abi=arm64-v8a"
@@ -164,7 +170,7 @@ jobs:
       - name: Upload current unsigned release package
         uses: actions/upload-artifact@v4
         with:
-          name: MD-Reader-v0.8.1-release-unsigned
+          name: MD-Reader-v0.9.0-release-unsigned
           path: dist/
           if-no-files-found: error
           retention-days: 3
