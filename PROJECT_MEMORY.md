@@ -135,3 +135,12 @@ APK v0.7 debug كان تقريبًا 65–67 MB لأن ML Kit Translation كان
 7. بناء Release والتحقق من الحجم والتوقيع والـABI.
 8. اختبار UX الذي يعتمد على اللمس أو الكيبورد على جهاز فعلي.
 9. تحديث هذا الملف بما تم، وما فشل، وما تبقى قبل الدمج.
+
+
+## v0.9.0 — GitHub Markdown import (in development)
+- Branch: `github-import-v0.9`.
+- Adds direct import of public Markdown files from GitHub by pasting a `github.com/.../blob/.../*.md` or `raw.githubusercontent.com/.../*.md` URL.
+- Home screen and overflow menu expose `تنزيل من GitHub`.
+- User can either download/open in MD Reader or download then save to device with Android's document picker.
+- Network fetch is HTTPS-only, follows only GitHub/raw GitHub redirects, uses explicit connect/read timeouts, and does not send credentials. Private repositories are intentionally not supported in this version.
+- URL parsing has pure-Java smoke coverage including `https://github.com/ahmed9461/GitDock/blob/main/CHANGELOG.md`.
