@@ -3,7 +3,7 @@ name: Build MD Reader v0.9.0 Release
 on:
   workflow_dispatch:
   push:
-    branches: [main, github-import-v0.9]
+    branches: [main]
     paths:
       - 'app/**'
       - 'tools/**'
