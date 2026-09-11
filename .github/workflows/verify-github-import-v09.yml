@@ -82,3 +82,5 @@ jobs:
           git diff --cached --check
           git commit -m "Add direct GitHub Markdown downloads (v0.9.0)"
           git push origin HEAD:github-import-v0.9
+
+# trigger: 2026-09-12
