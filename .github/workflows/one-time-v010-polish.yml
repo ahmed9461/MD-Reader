@@ -1,0 +1,112 @@
+name: One-time v0.10 polish
+
+on:
+  push:
+    branches:
+      - 'feature/task-answer-highlights-performance'
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/task-answer-highlights-performance
+          fetch-depth: 0
+
+      - name: Polish task normalization and editor behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          reader = Path('app/src/main/assets/reader.html')
+          html = reader.read_text()
+          old_normalizer = r'''  function normalizeTaskSyntax(source){
+    // Accept standard Markdown task syntax and common human variants:
+    // - [x], -[x], - [ x ], * [X], + [ ]
+    // The source file is not modified; normalization only affects preview rendering.
+    return String(source||'').replace(/^([\t ]*)[-+*][\t ]*\[[\t ]*([xX]?)[\t ]*\][\t ]*/gm,
+      function(_,indent,state){return indent+'- ['+(state?'x':' ')+'] ';});
+  }
+'''
+          new_normalizer = r'''  function normalizeTaskSyntax(source){
+    // Accept standard Markdown task syntax and common human variants:
+    // - [x], -[x], - [ x ], * [X], + [ ]
+    // Fenced code blocks are intentionally left byte-for-byte unchanged.
+    const lines=String(source||'').replace(/\r\n/g,'\n').split('\n');
+    let fenceChar='',fenceLength=0;
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      if(fenceChar){
+        const close=line.match(fenceChar==='`'?/^[\t ]{0,3}(`{3,})[\t ]*$/:/^[\t ]{0,3}(~{3,})[\t ]*$/);
+        if(close&&close[1].length>=fenceLength){fenceChar='';fenceLength=0;}
+        continue;
+      }
+      const open=line.match(/^[\t ]{0,3}(`{3,}|~{3,})/);
+      if(open){fenceChar=open[1][0];fenceLength=open[1].length;continue;}
+      lines[i]=line.replace(/^([\t ]*)[-+*][\t ]*\[[\t ]*([xX]?)[\t ]*\][\t ]*/,
+        function(_,indent,state){return indent+'- ['+(state?'x':' ')+'] ';});
+    }
+    return lines.join('\n');
+  }
+'''
+          if old_normalizer not in html:
+              raise SystemExit('reader task normalizer source block not found')
+          html = html.replace(old_normalizer, new_normalizer, 1)
+          reader.write_text(html)
+
+          main = Path('app/src/main/java/app/mdreader/mobile/MainActivity.java')
+          java = main.read_text()
+          old_task_state = '''        String[] lines=selected.split("\\\\n",-1);
+        StringBuilder out=new StringBuilder();
+        for(int i=0;i<lines.length;i++){
+            if(i>0)out.append('\\n');
+            out.append(taskLine(lines[i],checked));
+        }
+'''
+          new_task_state = '''        String[] lines=selected.split("\\\\n",-1);
+        StringBuilder out=new StringBuilder();
+        if(lines.length==1&&lines[0].trim().isEmpty()){
+            out.append(lines[0]).append("- [").append(checked?"x":" ").append("] ");
+        }else{
+            for(int i=0;i<lines.length;i++){
+                if(i>0)out.append('\\n');
+                out.append(taskLine(lines[i],checked));
+            }
+        }
+'''
+          if old_task_state not in java:
+              raise SystemExit('setTaskState source block not found')
+          java = java.replace(old_task_state, new_task_state, 1)
+          main.write_text(java)
+
+          memory = Path('PROJECT_MEMORY.md')
+          mem = memory.read_text()
+          fence_anchor = '  - `+ [ ]`\n'
+          fence_note = '- التطبيع لا يلمس محتوى fenced code blocks (` ``` ` أو `~~~`) حتى لا يغيّر أمثلة الكود داخل المستند.\n'
+          if fence_note not in mem:
+              if fence_anchor not in mem:
+                  raise SystemExit('memory task syntax anchor not found')
+              mem = mem.replace(fence_anchor, fence_anchor + fence_note, 1)
+          toolbar_anchor = '- زر task السريع في شريط التحرير أصبح يستخدم منطق السطر نفسه بدل إضافة prefix أعمى قد ينتج صياغة مكسورة.\n'
+          toolbar_note = '- عند استخدام زر task/الإجابة الصحيحة على سطر فارغ، يتم إنشاء marker فعلي بدل إظهار رسالة نجاح بدون تغيير النص.\n'
+          if toolbar_note not in mem:
+              if toolbar_anchor not in mem:
+                  raise SystemExit('memory toolbar anchor not found')
+              mem = mem.replace(toolbar_anchor, toolbar_anchor + toolbar_note, 1)
+          memory.write_text(mem)
+          PY
+
+          # The migration must not remain part of the project architecture.
+          git rm .github/workflows/one-time-v010-polish.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/assets/reader.html app/src/main/java/app/mdreader/mobile/MainActivity.java PROJECT_MEMORY.md
+          git commit -m 'Polish v0.10 task handling edge cases'
+          git push origin HEAD:feature/task-answer-highlights-performance
