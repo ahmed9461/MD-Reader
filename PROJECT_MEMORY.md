@@ -131,6 +131,7 @@
 - الفرع: `feature/task-answer-highlights-performance`.
 - `versionName`: **0.10.0**.
 - `versionCode`: **13**.
+- Draft PR: **#5 — MD Reader v0.10.0 — إجابات Markdown وأداء الملفات الكبيرة**.
 - `main` بقي على v0.9.0؛ لا دمج قبل اختبار الهاتف وموافقة المستخدم.
 
 ### Task lists والإجابات الصحيحة
@@ -170,8 +171,21 @@
 ### CI والبناء أثناء التطوير
 - تم تحديث pipeline إلى v0.10.0 وإضافة assertions لـ task rendering، chunked preview، التوافق مع minSdk، وفحص JavaScript.
 - ظهر عطل بنية تحتية في `android-actions/setup-android@v4` لأنه حاول تثبيت package قديم باسم `tools`; تم إزالة الاعتماد على تلك الخطوة واستخدام Android SDK الموجود على GitHub Hosted Runner مع تثبيت `platform-tools`, `android-36`, و`build-tools 36.0.0` مباشرة.
-- تم حذف كل workflows/scripts المؤقتة التي استُخدمت لنقل التعديلات إلى المصدر المباشر؛ النتيجة النهائية يجب أن تبقى direct-source كما تشترط قواعد المشروع.
-- آخر CI نهائي على رأس الفرع سيُسجل هنا بعد اكتماله.
+- تم حذف كل workflows/scripts المؤقتة التي استُخدمت لنقل التعديلات إلى المصدر المباشر؛ النتيجة النهائية بقيت direct-source كما تشترط قواعد المشروع.
+- GitHub Actions **Run #80** — id `35131485730` — على commit `b6bfd97bace8fbeea1e5da4f1fd269bbb14301ad` انتهى **Success** بالكامل في التحقق من الكود والبناء.
+- نجح في هذا الـrun:
+  - direct-source architecture + v0.10 assertions.
+  - Java smoke tests: Transform / Translation / Speech / SearchReplace / GitHubMarkdownSource.
+  - JavaScript syntax check.
+  - task syntax + large-document compatibility assertions.
+  - ARM64 optimized Release APK build.
+  - App Bundle Release build.
+  - ABI/output verification.
+- ناتج البناء المتحقق منه:
+  - `MD-Reader-v0.10.0-arm64-release-unsigned.apk` — **18,200,803 bytes** — SHA-256 `d43efea53a183e151e4ccc0c3e7538ac97c966e49e6ad105d60ac415c1803ab7`.
+  - `MD-Reader-v0.10.0-release-unsigned.aab` — **56,709,179 bytes** — SHA-256 `84d0be670af17182a5aa106fa16dcbe8536ad7c1efdac99a60713a9fd00e27f9`.
+- رفع Artifact لم ينجح بسبب **GitHub Actions artifact storage quota**؛ GitHub أوضح أن حساب الاستخدام يُعاد احتسابه كل 6–12 ساعة. هذا لا يعني فشل الكود أو البناء، والـCI النهائي نفسه بقي Success بعد أن تم التحقق من APK/AAB والـABI.
+- الـAPK الناتج من CI **unsigned**؛ اختبار التحديث على الهاتف يجب أن يستخدم نسخة موقعة بمفتاح الإصدار الثابت نفسه قبل اعتماد v0.10.0.
 
 ### ما يجب اختباره على الهاتف قبل الاعتماد
 1. فتح ملف بنك الأسئلة الكبير والتمرير السريع في المعاينة.
