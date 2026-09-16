@@ -1,9 +1,11 @@
-name: Build MD Reader v0.9.0 Release
+name: Build MD Reader v0.10.0 Release
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'feature/**'
     paths:
       - 'app/**'
       - 'tools/**'
@@ -25,7 +27,7 @@ jobs:
       - name: Checkout normalized source
         uses: actions/checkout@v4
 
-      - name: Assert direct-source architecture and v0.9 features
+      - name: Assert direct-source architecture and v0.10 features
         shell: bash
         run: |
           set -euo pipefail
@@ -37,8 +39,8 @@ jobs:
           ! grep -q 'apply_editor_ux_v07.py' .github/workflows/build-apk.yml
           ! grep -q 'v0.5-mainactivity.patch' .github/workflows/build-apk.yml
           ! grep -q 'AdjustableScroller' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q "versionName '0.9.0'" app/build.gradle
-          grep -q "versionCode 12" app/build.gradle
+          grep -q "versionName '0.10.0'" app/build.gradle
+          grep -q "versionCode 13" app/build.gradle
           grep -q 'new FlingEditText(this)' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'setFlingSpeedPercent' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'boolean scrollable=aa!=null&&aa.length>7' app/src/main/java/app/mdreader/mobile/MainActivity.java
@@ -48,6 +50,12 @@ jobs:
           grep -q 'githubImportDialog' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'GitHubMarkdownSource.download' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'breaks:true' app/src/main/assets/reader.html
+          grep -q 'normalizeTaskSyntax' app/src/main/assets/reader.html
+          grep -q 'task-checked' app/src/main/assets/reader.html
+          grep -q 'correct-answer' app/src/main/assets/reader.html
+          grep -q 'LARGE_DOCUMENT_CHARS' app/src/main/assets/reader.html
+          grep -q 'IntersectionObserver' app/src/main/assets/reader.html
+          grep -q 'content-visibility:auto' app/src/main/assets/reader.html
           grep -q 'android:windowSoftInputMode="adjustResize"' app/src/main/AndroidManifest.xml
 
       - name: Set up JDK 17
@@ -107,6 +115,22 @@ jobs:
           PY
           node --check /tmp/reader-inline.js
 
+      - name: Check task syntax compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path('app/src/main/assets/reader.html').read_text()
+          assert 'normalizeTaskSyntax' in html
+          assert "- [x], -[x], - [ x ]" in html
+          assert "startsWith('✅')" in html
+          assert 'task-checked' in html
+          assert 'correct-answer' in html
+          print('Task syntax compatibility assertions passed.')
+          PY
+
       - name: Build optimized ARM64 release APK
         shell: bash
         run: |
@@ -119,7 +143,7 @@ jobs:
             find app/build/outputs/apk -type f -print || true
             exit 1
           fi
-          cp "$ARM64_APK" dist/MD-Reader-v0.9.0-arm64-release-unsigned.apk
+          cp "$ARM64_APK" dist/MD-Reader-v0.10.0-arm64-release-unsigned.apk
 
       - name: Build optimized App Bundle separately
         shell: bash
@@ -133,20 +157,20 @@ jobs:
             find app/build/outputs/bundle -type f -print || true
             exit 1
           fi
-          cp "$AAB" dist/MD-Reader-v0.9.0-release-unsigned.aab
+          cp "$AAB" dist/MD-Reader-v0.10.0-release-unsigned.aab
 
       - name: Verify optimized outputs
         shell: bash
         run: |
           set -euo pipefail
-          test -s dist/MD-Reader-v0.9.0-arm64-release-unsigned.apk
-          test -s dist/MD-Reader-v0.9.0-release-unsigned.aab
-          unzip -l dist/MD-Reader-v0.9.0-arm64-release-unsigned.apk > /tmp/apk-list.txt
+          test -s dist/MD-Reader-v0.10.0-arm64-release-unsigned.apk
+          test -s dist/MD-Reader-v0.10.0-release-unsigned.aab
+          unzip -l dist/MD-Reader-v0.10.0-arm64-release-unsigned.apk > /tmp/apk-list.txt
           grep -q 'lib/arm64-v8a/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86_64/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/armeabi-v7a/libtranslate_jni.so' /tmp/apk-list.txt
-          unzip -l dist/MD-Reader-v0.9.0-release-unsigned.aab > /tmp/aab-list.txt
+          unzip -l dist/MD-Reader-v0.10.0-release-unsigned.aab > /tmp/aab-list.txt
           grep -q 'base/lib/arm64-v8a/libtranslate_jni.so' /tmp/aab-list.txt
           grep -q 'base/lib/armeabi-v7a/libtranslate_jni.so' /tmp/aab-list.txt
           mkdir -p dist/signing-tools/lib
@@ -155,10 +179,10 @@ jobs:
           chmod +x dist/signing-tools/apksigner
           sha256sum dist/*.apk dist/*.aab > dist/SHA256SUMS.txt
           {
-            echo "version=0.9.0"
-            echo "versionCode=12"
-            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.9.0-arm64-release-unsigned.apk)"
-            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.9.0-release-unsigned.aab)"
+            echo "version=0.10.0"
+            echo "versionCode=13"
+            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.10.0-arm64-release-unsigned.apk)"
+            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.10.0-release-unsigned.aab)"
             echo "minified=true"
             echo "resources_shrunk=true"
             echo "apk_abi=arm64-v8a"
@@ -170,7 +194,7 @@ jobs:
       - name: Upload current unsigned release package
         uses: actions/upload-artifact@v4
         with:
-          name: MD-Reader-v0.9.0-release-unsigned
+          name: MD-Reader-v0.10.0-release-unsigned
           path: dist/
           if-no-files-found: error
           retention-days: 3
