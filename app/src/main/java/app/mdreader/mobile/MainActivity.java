@@ -89,9 +89,10 @@ public class MainActivity extends Activity {
     private String currentName="غير محفوظ.md",savedText="";
     private boolean dirty=false,editing=false,homeMode=true,readerReady=false,suppress=false,dark=false;
     private int fontSize=17,editorScrollPercent=EDITOR_SCROLL_DEFAULT,bg,surface,text,muted,border,accent;
-    private Runnable saveThen,draftPending,renderPending;
+    private Runnable saveThen,draftPending,renderPending,editorMaintenancePending;
     private int renderToken=0;
     private static final int PREVIEW_CHUNK_CHARS=90000;
+    private static final int LARGE_EDITOR_DEBOUNCE_CHARS=120000, LARGE_HISTORY_LIMIT=20;
     private Dialog speechDialog;
     private TextView speechStatus,speechProgress,speechPlay,speechRate;
 
@@ -140,7 +141,27 @@ public class MainActivity extends Activity {
     }
 
     private void configureEditor(){
-        history.reset(""); editor.addTextChangedListener(new Watcher(){@Override public void afterTextChanged(Editable s){ if(suppress)return; String t=s.toString(); dirty=!t.equals(savedText); history.schedule(t); scheduleDraft(t); updateTitle(); if(searchBar.getVisibility()==View.VISIBLE) editorSearch(searchInput.getText().toString()); }});
+        history.reset(""); editor.addTextChangedListener(new Watcher(){@Override public void afterTextChanged(Editable s){
+            if(suppress)return;
+            if(s.length()>=LARGE_EDITOR_DEBOUNCE_CHARS){
+                dirty=true;updateTitle();scheduleEditorMaintenance();
+            }else{
+                String t=s.toString();dirty=!t.equals(savedText);history.schedule(t);scheduleDraft(t);updateTitle();
+                if(searchBar.getVisibility()==View.VISIBLE)editorSearch(searchInput.getText().toString());
+            }
+        }});
+    }
+
+    private void scheduleEditorMaintenance(){
+        if(editorMaintenancePending!=null)main.removeCallbacks(editorMaintenancePending);
+        editorMaintenancePending=()->{
+            editorMaintenancePending=null;
+            if(suppress||editor==null)return;
+            String t=editor.getText().toString();
+            dirty=!t.equals(savedText);history.schedule(t);scheduleDraft(t);updateTitle();
+            if(searchBar.getVisibility()==View.VISIBLE)editorSearch(searchInput.getText().toString());
+        };
+        main.postDelayed(editorMaintenancePending,220);
     }
 
 
@@ -654,7 +675,7 @@ public class MainActivity extends Activity {
         if(idx>=0){editor.requestFocus();editor.setSelection(idx,idx+q.length());editor.bringPointIntoView(idx);}
         editorSearch(q);
     }
-    private void editorSearch(String q){if(q==null||q.isEmpty()){searchCount.setText("0/0");return;}int count=SearchReplaceEngine.count(txt(),q,false);int current=SearchReplaceEngine.ordinalAt(txt(),q,editor.getSelectionStart(),false);searchCount.setText(count==0?"0/0":Math.max(1,current)+"/"+count);}
+    private void editorSearch(String q){if(q==null||q.isEmpty()){searchCount.setText("0/0");return;}String source=txt();int count=SearchReplaceEngine.count(source,q,false);int current=SearchReplaceEngine.ordinalAt(source,q,editor.getSelectionStart(),false);searchCount.setText(count==0?"0/0":Math.max(1,current)+"/"+count);}
     private void clearSearch(){if(searchCount!=null)searchCount.setText("0/0");if(preview!=null)preview.clearMatches();}
 
     private void editorScrollSettings(){
@@ -806,8 +827,8 @@ public class MainActivity extends Activity {
     private void external(String s){try{Uri u=Uri.parse(s);String sc=u.getScheme();if(sc!=null&&(sc.equals("http")||sc.equals("https")||sc.equals("mailto")||sc.equals("tel")))startActivity(new Intent(Intent.ACTION_VIEW,u));}catch(Exception ignored){}}
     private String txt(){return editor==null?"":editor.getText().toString();}private int dp(int v){return Math.round(v*getResources().getDisplayMetrics().density);}private static int clamp(int v,int a,int b){return Math.max(a,Math.min(b,v));}private static String ensureMd(String n){if(n==null||n.isEmpty())n="document.md";String l=n.toLowerCase(Locale.ROOT);return l.endsWith(".md")||l.endsWith(".markdown")?n:n+".md";}private static String stripMd(String n){return n==null?"Markdown":n.replaceFirst("(?i)\\.(md|markdown)$","");}private static String repeat(String s,int n){StringBuilder b=new StringBuilder();for(int i=0;i<n;i++)b.append(s);return b.toString();}private String time(long t){return t<=0?"":DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(new Date(t));}
 
-    @Override protected void onDestroy(){if(draftPending!=null)main.removeCallbacks(draftPending);if(renderPending!=null)main.removeCallbacks(renderPending);renderToken++;previewIo.shutdownNow();io.shutdownNow();if(speech!=null)speech.shutdown();aiTranslator.shutdown();history.cancel();if(preview!=null){preview.removeJavascriptInterface("Android");preview.destroy();}super.onDestroy();}
+    @Override protected void onDestroy(){if(draftPending!=null)main.removeCallbacks(draftPending);if(renderPending!=null)main.removeCallbacks(renderPending);if(editorMaintenancePending!=null)main.removeCallbacks(editorMaintenancePending);renderToken++;previewIo.shutdownNow();io.shutdownNow();if(speech!=null)speech.shutdown();aiTranslator.shutdown();history.cancel();if(preview!=null){preview.removeJavascriptInterface("Android");preview.destroy();}super.onDestroy();}
     private class Bridge{@JavascriptInterface public void copyText(String s){runOnUiThread(()->{((ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("code",s==null?"":s));Toast.makeText(MainActivity.this,"تم النسخ",Toast.LENGTH_SHORT).show();});}@JavascriptInterface public void openLink(String s){runOnUiThread(()->external(s));}}
     private abstract static class Watcher implements TextWatcher{public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int b,int c){}}
-    private class History{final List<String> undo=new ArrayList<>(),redo=new ArrayList<>();String cur="";Runnable pending;void reset(String s){cancel();undo.clear();redo.clear();cur=s==null?"":s;}void schedule(String s){cancel();pending=()->checkpoint(s);main.postDelayed(pending,450);}void checkpoint(String s){cancel();if(s==null)s="";if(s.equals(cur))return;undo.add(cur);if(undo.size()>80)undo.remove(0);cur=s;redo.clear();}String undo(String actual){cancel();if(!actual.equals(cur))checkpoint(actual);if(undo.isEmpty())return null;redo.add(cur);cur=undo.remove(undo.size()-1);return cur;}String redo(String actual){cancel();if(!actual.equals(cur))checkpoint(actual);if(redo.isEmpty())return null;undo.add(cur);cur=redo.remove(redo.size()-1);return cur;}void cancel(){if(pending!=null){main.removeCallbacks(pending);pending=null;}}}
+    private class History{final List<String> undo=new ArrayList<>(),redo=new ArrayList<>();String cur="";Runnable pending;void reset(String s){cancel();undo.clear();redo.clear();cur=s==null?"":s;}void schedule(String s){cancel();pending=()->checkpoint(s);main.postDelayed(pending,450);}void checkpoint(String s){cancel();if(s==null)s="";if(s.equals(cur))return;undo.add(cur);int limit=s.length()>=LARGE_EDITOR_DEBOUNCE_CHARS?LARGE_HISTORY_LIMIT:80;while(undo.size()>limit)undo.remove(0);cur=s;redo.clear();}String undo(String actual){cancel();if(!actual.equals(cur))checkpoint(actual);if(undo.isEmpty())return null;redo.add(cur);cur=undo.remove(undo.size()-1);return cur;}String redo(String actual){cancel();if(!actual.equals(cur))checkpoint(actual);if(redo.isEmpty())return null;undo.add(cur);cur=redo.remove(redo.size()-1);return cur;}void cancel(){if(pending!=null){main.removeCallbacks(pending);pending=null;}}}
 }
