@@ -50,11 +50,10 @@ img{max-width:100%;height:auto;border-radius:8px}
 li.task-item{list-style:none;position:relative;margin:.34em 0;padding:.18em .35em;border-radius:8px}
 li.task-item::marker{content:""}
 .task-box{display:inline-flex;width:1.2em;height:1.2em;margin-inline-end:.55em;vertical-align:-.16em;align-items:center;justify-content:center;border:2px solid var(--task-empty);border-radius:4px;font-size:.86em;font-weight:900;line-height:1;color:transparent;background:transparent;user-select:none}
-.task-item.task-checked{background:var(--success-bg);font-weight:700;color:var(--success);box-shadow:inset 4px 0 0 var(--success-border)}
-[dir="rtl"] .task-item.task-checked{box-shadow:inset -4px 0 0 var(--success-border)}
+.task-item.task-checked{background:var(--success-bg);font-weight:700;color:var(--success);border-inline-start:4px solid var(--success-border)}
 .task-item.task-checked .task-box{border-color:var(--success-border);background:var(--success-border);color:#fff}
 .correct-answer{background:var(--success-bg);color:var(--success);font-weight:700;border-inline-start:4px solid var(--success-border);border-radius:8px;padding:.28em .55em}
-.task-item.correct-answer{border-inline-start:0;padding:.18em .35em}
+.task-item.correct-answer{padding:.18em .35em}
 
 .mermaid{margin:1.2em 0;text-align:center;overflow:auto}
 .mermaid-error{border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--secondary)}
@@ -84,6 +83,7 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
   let codeObserver = null;
   let mermaidObserver = null;
   let renderGeneration = 0;
+  let chunkedMarkdown = null;
 
   function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   const md = window.markdownit({
@@ -289,6 +289,24 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
       return new TextDecoder('utf-8').decode(bytes);
     }catch(e){return '';}
   }
+
+  window.beginChunkedMarkdown = function(theme,fontSize){
+    chunkedMarkdown={theme:theme||'light',fontSize:fontSize||17,parts:[]};
+  };
+
+  window.appendMarkdownChunk = function(encodedPart){
+    if(!chunkedMarkdown)return;
+    chunkedMarkdown.parts.push(String(encodedPart||''));
+  };
+
+  window.finishChunkedMarkdown = function(){
+    const pending=chunkedMarkdown;
+    chunkedMarkdown=null;
+    if(!pending)return;
+    const encoded=pending.parts.join('');
+    pending.parts.length=0;
+    window.renderMarkdown(encoded,pending.theme,pending.fontSize);
+  };
 
   window.renderMarkdown = async function(encoded,theme,fontSize){
     const generation=++renderGeneration;
