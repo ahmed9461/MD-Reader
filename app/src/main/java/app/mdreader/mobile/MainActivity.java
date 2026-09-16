@@ -328,9 +328,16 @@ public class MainActivity extends Activity {
         editor.bringPointIntoView(caret);
     }
 
+    private String trimLeadingCompat(String value){
+        if(value==null)return "";
+        int p=0;
+        while(p<value.length()&&Character.isWhitespace(value.charAt(p)))p++;
+        return p==0?value:value.substring(p);
+    }
+
     private int taskMarkerState(String body){
         if(body==null)return -1;
-        String value=body.stripLeading();
+        String value=trimLeadingCompat(body);
         if(value.startsWith("✅"))return 1;
         if(value.isEmpty())return -1;
         char bullet=value.charAt(0);
@@ -347,14 +354,14 @@ public class MainActivity extends Activity {
 
     private String taskBody(String body){
         if(body==null)return "";
-        String value=body.stripLeading();
-        if(value.startsWith("✅"))return value.substring("✅".length()).stripLeading();
+        String value=trimLeadingCompat(body);
+        if(value.startsWith("✅"))return trimLeadingCompat(value.substring("✅".length()));
         int state=taskMarkerState(value);
         if(state<0)return value;
         int p=1;
         while(p<value.length()&&(value.charAt(p)==' '||value.charAt(p)=='\t'))p++;
         int close=value.indexOf(']',p+1);
-        return close<0?value:value.substring(close+1).stripLeading();
+        return close<0?value:trimLeadingCompat(value.substring(close+1));
     }
 
     private String taskLine(String line,boolean checked){
@@ -363,7 +370,7 @@ public class MainActivity extends Activity {
         while(p<line.length()&&(line.charAt(p)==' '||line.charAt(p)=='\t'))p++;
         String indent=line.substring(0,p),body=line.substring(p);
         String clean=taskBody(body);
-        if(clean.isBlank())return line;
+        if(clean.trim().isEmpty())return line;
         return indent+"- ["+(checked?"x":" ")+"] "+clean;
     }
 
