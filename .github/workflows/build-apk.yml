@@ -38,6 +38,8 @@ jobs:
           test -s app/src/main/res/drawable-nodpi/ic_launcher_art.webp
           ! grep -q 'apply_editor_ux_v07.py' .github/workflows/build-apk.yml
           ! grep -q 'v0.5-mainactivity.patch' .github/workflows/build-apk.yml
+          ! test -e tools/source_sync_v010.py
+          ! test -e .github/workflows/source-sync-v010.yml
           ! grep -q 'AdjustableScroller' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q "versionName '0.10.0'" app/build.gradle
           grep -q "versionCode 13" app/build.gradle
@@ -49,6 +51,12 @@ jobs:
           grep -q 'PREF_EDITOR_SCROLL' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'githubImportDialog' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'GitHubMarkdownSource.download' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'setTaskState(boolean checked)' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'normalizeTaskMarkers' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'PREVIEW_CHUNK_CHARS' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'previewIo=Executors.newSingleThreadExecutor' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'window.beginChunkedMarkdown' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'MD Reader 0.10.0' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'breaks:true' app/src/main/assets/reader.html
           grep -q 'normalizeTaskSyntax' app/src/main/assets/reader.html
           grep -q 'task-checked' app/src/main/assets/reader.html
@@ -56,6 +64,9 @@ jobs:
           grep -q 'LARGE_DOCUMENT_CHARS' app/src/main/assets/reader.html
           grep -q 'IntersectionObserver' app/src/main/assets/reader.html
           grep -q 'content-visibility:auto' app/src/main/assets/reader.html
+          grep -q 'window.beginChunkedMarkdown' app/src/main/assets/reader.html
+          grep -q 'window.appendMarkdownChunk' app/src/main/assets/reader.html
+          grep -q 'window.finishChunkedMarkdown' app/src/main/assets/reader.html
           grep -q 'android:windowSoftInputMode="adjustResize"' app/src/main/AndroidManifest.xml
 
       - name: Set up JDK 17
@@ -64,11 +75,16 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Install Android platform and build tools
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Install required Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          sdkmanager --list_installed | grep -E 'platforms;android-36|build-tools;36.0.0'
 
       - name: Set up Gradle without persistent Actions cache
         uses: gradle/actions/setup-gradle@v4
@@ -115,20 +131,28 @@ jobs:
           PY
           node --check /tmp/reader-inline.js
 
-      - name: Check task syntax compatibility
+      - name: Check task syntax and large-document compatibility
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import re
           from pathlib import Path
           html = Path('app/src/main/assets/reader.html').read_text()
+          java = Path('app/src/main/java/app/mdreader/mobile/MainActivity.java').read_text()
           assert 'normalizeTaskSyntax' in html
-          assert "- [x], -[x], - [ x ]" in html
+          assert '- [x], -[x], - [ x ]' in html
           assert "startsWith('✅')" in html
-          assert 'task-checked' in html
-          assert 'correct-answer' in html
-          print('Task syntax compatibility assertions passed.')
+          assert 'task-checked' in html and 'correct-answer' in html
+          assert 'content-visibility:auto' in html
+          assert 'IntersectionObserver' in html
+          assert 'window.beginChunkedMarkdown' in html
+          assert 'window.appendMarkdownChunk' in html
+          assert 'window.finishChunkedMarkdown' in html
+          assert 'setTaskState(boolean checked)' in java
+          assert 'normalizeTaskMarkers' in java
+          assert 'PREVIEW_CHUNK_CHARS=90000' in java
+          assert 'previewIo.execute' in java
+          print('Task and large-document compatibility assertions passed.')
           PY
 
       - name: Build optimized ARM64 release APK
