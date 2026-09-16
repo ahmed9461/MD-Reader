@@ -1,0 +1,198 @@
+from pathlib import Path
+
+path = Path('app/src/main/java/app/mdreader/mobile/MainActivity.java')
+s = path.read_text()
+
+
+def replace_once(old: str, new: str, label: str) -> None:
+    global s
+    if new in s:
+        return
+    if old not in s:
+        raise SystemExit(f'Expected source block not found: {label}')
+    s = s.replace(old, new, 1)
+
+
+replace_once(
+    '    private final ExecutorService io=Executors.newSingleThreadExecutor();\n',
+    '    private final ExecutorService io=Executors.newSingleThreadExecutor();\n'
+    '    private final ExecutorService previewIo=Executors.newSingleThreadExecutor();\n',
+    'preview executor',
+)
+
+replace_once(
+    '    private Runnable saveThen,draftPending;\n',
+    '    private Runnable saveThen,draftPending,renderPending;\n'
+    '    private int renderToken=0;\n'
+    '    private static final int PREVIEW_CHUNK_CHARS=90000;\n',
+    'render state',
+)
+
+old_tools = '''    private void extraMarkdownTools(){
+        sheet("أدوات Markdown إضافية",
+                new Action("☑ قائمة مهام",this::insertTaskList,false),
+                new Action("▦ جدول",()->insertMarkdownBlock("| العمود 1 | العمود 2 |"+System.lineSeparator()+"| --- | --- |"+System.lineSeparator()+"| قيمة | قيمة |"),false),
+                new Action("— فاصل أفقي",()->insertMarkdownBlock("---"),false),
+                new Action("إلغاء",null,false));
+    }
+'''
+
+new_tools = '''    private void extraMarkdownTools(){
+        sheet("أدوات Markdown إضافية",
+                new Action("✅ إجابة صحيحة",()->setTaskState(true),false),
+                new Action("☐ اختيار غير محدد",()->setTaskState(false),false),
+                new Action("☑ قائمة مهام",this::insertTaskList,false),
+                new Action("🧹 توحيد مربعات الاختيار",this::normalizeTaskMarkers,false),
+                new Action("▦ جدول",()->insertMarkdownBlock("| العمود 1 | العمود 2 |"+System.lineSeparator()+"| --- | --- |"+System.lineSeparator()+"| قيمة | قيمة |"),false),
+                new Action("— فاصل أفقي",()->insertMarkdownBlock("---"),false),
+                new Action("إلغاء",null,false));
+    }
+'''
+replace_once(old_tools, new_tools, 'extra Markdown tools')
+
+helper_marker = '    private void configurePreview(){\n'
+helpers = r'''    private int taskMarkerState(String body){
+        if(body==null)return -1;
+        String value=body.stripLeading();
+        if(value.startsWith("✅"))return 1;
+        if(value.isEmpty())return -1;
+        char bullet=value.charAt(0);
+        if(bullet!='-'&&bullet!='*'&&bullet!='+')return -1;
+        int p=1;
+        while(p<value.length()&&(value.charAt(p)==' '||value.charAt(p)=='\t'))p++;
+        if(p>=value.length()||value.charAt(p)!='[')return -1;
+        int close=value.indexOf(']',p+1);
+        if(close<0)return -1;
+        String state=value.substring(p+1,close).trim();
+        if(state.isEmpty())return 0;
+        return state.equalsIgnoreCase("x")?1:-1;
+    }
+
+    private String taskBody(String body){
+        if(body==null)return "";
+        String value=body.stripLeading();
+        if(value.startsWith("✅"))return value.substring("✅".length()).stripLeading();
+        int state=taskMarkerState(value);
+        if(state<0)return value;
+        int p=1;
+        while(p<value.length()&&(value.charAt(p)==' '||value.charAt(p)=='\t'))p++;
+        int close=value.indexOf(']',p+1);
+        return close<0?value:value.substring(close+1).stripLeading();
+    }
+
+    private String taskLine(String line,boolean checked){
+        if(line==null)return "";
+        int p=0;
+        while(p<line.length()&&(line.charAt(p)==' '||line.charAt(p)=='\t'))p++;
+        String indent=line.substring(0,p),body=line.substring(p);
+        String clean=taskBody(body);
+        if(clean.isBlank())return line;
+        return indent+"- ["+(checked?"x":" ")+"] "+clean;
+    }
+
+    private int[] selectedLineBounds(){
+        String all=txt();
+        int a=Math.max(0,Math.min(editor.getSelectionStart(),editor.getSelectionEnd()));
+        int b=Math.max(a,Math.max(editor.getSelectionStart(),editor.getSelectionEnd()));
+        int start=all.lastIndexOf('\n',Math.max(0,a-1));start=start<0?0:start+1;
+        int end=all.indexOf('\n',b);if(end<0)end=all.length();
+        return new int[]{start,end};
+    }
+
+    private void setTaskState(boolean checked){
+        if(!editing)setEditing(true);
+        int[] bounds=selectedLineBounds();
+        Editable e=editor.getText();
+        String selected=e.subSequence(bounds[0],bounds[1]).toString();
+        String[] lines=selected.split("\\n",-1);
+        StringBuilder out=new StringBuilder();
+        for(int i=0;i<lines.length;i++){
+            if(i>0)out.append('\n');
+            out.append(taskLine(lines[i],checked));
+        }
+        e.replace(bounds[0],bounds[1],out.toString());
+        int end=Math.min(e.length(),bounds[0]+out.length());
+        editor.setSelection(end);
+        editor.bringPointIntoView(end);
+        Toast.makeText(this,checked?"تم تحديد الإجابة الصحيحة":"تم إنشاء اختيار غير محدد",Toast.LENGTH_SHORT).show();
+    }
+
+    private void normalizeTaskMarkers(){
+        if(!editing)setEditing(true);
+        String old=txt();
+        String[] lines=old.split("\\n",-1);
+        StringBuilder out=new StringBuilder(old.length()+32);
+        int changed=0;
+        for(int i=0;i<lines.length;i++){
+            if(i>0)out.append('\n');
+            String line=lines[i];
+            int p=0;while(p<line.length()&&(line.charAt(p)==' '||line.charAt(p)=='\t'))p++;
+            String body=line.substring(p);
+            int state=taskMarkerState(body);
+            if(state>=0){String normalized=taskLine(line,state==1);out.append(normalized);if(!normalized.equals(line))changed++;}
+            else out.append(line);
+        }
+        if(changed==0){Toast.makeText(this,"مربعات الاختيار سليمة بالفعل",Toast.LENGTH_SHORT).show();return;}
+        history.checkpoint(old);
+        int oldCaret=Math.max(0,editor.getSelectionStart());
+        String next=out.toString();
+        suppress=true;editor.setText(next);editor.setSelection(Math.min(next.length(),oldCaret));suppress=false;
+        history.checkpoint(next);dirty=!next.equals(savedText);scheduleDraft(next);updateTitle();
+        Toast.makeText(this,"تم توحيد "+changed+" سطر",Toast.LENGTH_SHORT).show();
+    }
+
+'''
+if 'private void setTaskState(boolean checked)' not in s:
+    if helper_marker not in s:
+        raise SystemExit('Expected configurePreview marker not found')
+    s = s.replace(helper_marker, helpers + helper_marker, 1)
+
+old_render = '''    private void render(){if(!readerReady||preview==null)return;String enc=Base64.encodeToString(txt().getBytes(StandardCharsets.UTF_8),Base64.NO_WRAP);preview.evaluateJavascript("window.renderMarkdown('"+enc+"','"+(dark?"dark":"light")+"',"+fontSize+");",null);}'''
+new_render = r'''    private void render(){
+        if(!readerReady||preview==null||homeMode||editing)return;
+        if(renderPending!=null)main.removeCallbacks(renderPending);
+        final int token=++renderToken;
+        renderPending=()->{
+            renderPending=null;
+            if(token!=renderToken||preview==null||homeMode||editing)return;
+            final String source=txt();
+            final String theme=dark?"dark":"light";
+            final int size=fontSize;
+            previewIo.execute(()->{
+                final String encoded=Base64.encodeToString(source.getBytes(StandardCharsets.UTF_8),Base64.NO_WRAP);
+                main.post(()->{
+                    if(token!=renderToken||preview==null||homeMode||editing)return;
+                    if(encoded.length()<=PREVIEW_CHUNK_CHARS){
+                        preview.evaluateJavascript("window.renderMarkdown('"+encoded+"','"+theme+"',"+size+");",null);
+                    }else{
+                        preview.evaluateJavascript("window.beginChunkedMarkdown('"+theme+"',"+size+");",v->sendPreviewChunk(encoded,0,token));
+                    }
+                });
+            });
+        };
+        main.postDelayed(renderPending,32);
+    }
+
+    private void sendPreviewChunk(String encoded,int offset,int token){
+        if(token!=renderToken||preview==null||homeMode||editing)return;
+        if(offset>=encoded.length()){
+            preview.evaluateJavascript("window.finishChunkedMarkdown();",null);
+            return;
+        }
+        int end=Math.min(encoded.length(),offset+PREVIEW_CHUNK_CHARS);
+        if(end<encoded.length())end-=((end-offset)%4);
+        if(end<=offset)end=Math.min(encoded.length(),offset+4);
+        String chunk=encoded.substring(offset,end);
+        final int next=end;
+        preview.evaluateJavascript("window.appendMarkdownChunk('"+chunk+"');",v->sendPreviewChunk(encoded,next,token));
+    }'''
+replace_once(old_render, new_render, 'preview render')
+
+replace_once(
+    '    @Override protected void onDestroy(){if(draftPending!=null)main.removeCallbacks(draftPending);io.shutdownNow();',
+    '    @Override protected void onDestroy(){if(draftPending!=null)main.removeCallbacks(draftPending);if(renderPending!=null)main.removeCallbacks(renderPending);renderToken++;previewIo.shutdownNow();io.shutdownNow();',
+    'onDestroy cleanup',
+)
+
+path.write_text(s)
+print('v0.10 MainActivity source migration applied.')
