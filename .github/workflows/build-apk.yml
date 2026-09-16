@@ -40,6 +40,7 @@ jobs:
           ! grep -q 'v0.5-mainactivity.patch' .github/workflows/build-apk.yml
           ! test -e tools/source_sync_v010.py
           ! test -e .github/workflows/source-sync-v010.yml
+          ! test -e .github/workflows/compat-fix-v010.yml
           ! grep -q 'AdjustableScroller' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q "versionName '0.10.0'" app/build.gradle
           grep -q "versionCode 13" app/build.gradle
@@ -53,6 +54,9 @@ jobs:
           grep -q 'GitHubMarkdownSource.download' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'setTaskState(boolean checked)' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'normalizeTaskMarkers' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'trimLeadingCompat' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          ! grep -q '\.stripLeading()' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          ! grep -q '\.isBlank()' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'PREVIEW_CHUNK_CHARS' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'previewIo=Executors.newSingleThreadExecutor' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'window.beginChunkedMarkdown' app/src/main/java/app/mdreader/mobile/MainActivity.java
@@ -150,6 +154,9 @@ jobs:
           assert 'window.finishChunkedMarkdown' in html
           assert 'setTaskState(boolean checked)' in java
           assert 'normalizeTaskMarkers' in java
+          assert 'trimLeadingCompat' in java
+          assert '.stripLeading()' not in java
+          assert '.isBlank()' not in java
           assert 'PREVIEW_CHUNK_CHARS=90000' in java
           assert 'previewIo.execute' in java
           print('Task and large-document compatibility assertions passed.')
