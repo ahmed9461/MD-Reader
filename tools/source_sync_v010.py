@@ -1,6 +1,6 @@
 from pathlib import Path
 
-path = Path('app/src/main/assets/reader.html')
+path = Path('app/src/main/java/app/mdreader/mobile/MainActivity.java')
 s = path.read_text()
 
 
@@ -9,53 +9,19 @@ def replace_once(old: str, new: str, label: str) -> None:
     if new in s:
         return
     if old not in s:
-        raise SystemExit(f'Expected renderer block not found: {label}')
+        raise SystemExit(f'Expected source block not found: {label}')
     s = s.replace(old, new, 1)
 
 
 replace_once(
-    '.task-item.task-checked{background:var(--success-bg);font-weight:700;color:var(--success);box-shadow:inset 4px 0 0 var(--success-border)}\n'
-    '[dir="rtl"] .task-item.task-checked{box-shadow:inset -4px 0 0 var(--success-border)}\n',
-    '.task-item.task-checked{background:var(--success-bg);font-weight:700;color:var(--success);border-inline-start:4px solid var(--success-border)}\n',
-    'checked task directional border',
+    'format("❝",v->prefix("> ",false));format("•",v->prefix("- ",false));format("1.",v->prefix("",true));format("☑",v->prefix("- [ ] ",false));divider();',
+    'format("❝",v->prefix("> ",false));format("•",v->prefix("- ",false));format("1.",v->prefix("",true));format("☑",v->setTaskState(false));divider();',
+    'quick task toolbar action',
 )
 
-replace_once(
-    '.task-item.correct-answer{border-inline-start:0;padding:.18em .35em}\n',
-    '.task-item.correct-answer{padding:.18em .35em}\n',
-    'checked task correct-answer style',
-)
-
-replace_once(
-    '  let renderGeneration = 0;\n',
-    '  let renderGeneration = 0;\n  let chunkedMarkdown = null;\n',
-    'chunked renderer state',
-)
-
-marker = '  window.renderMarkdown = async function(encoded,theme,fontSize){\n'
-chunk_api = '''  window.beginChunkedMarkdown = function(theme,fontSize){
-    chunkedMarkdown={theme:theme||'light',fontSize:fontSize||17,parts:[]};
-  };
-
-  window.appendMarkdownChunk = function(encodedPart){
-    if(!chunkedMarkdown)return;
-    chunkedMarkdown.parts.push(String(encodedPart||''));
-  };
-
-  window.finishChunkedMarkdown = function(){
-    const pending=chunkedMarkdown;
-    chunkedMarkdown=null;
-    if(!pending)return;
-    const encoded=pending.parts.join('');
-    pending.parts.length=0;
-    window.renderMarkdown(encoded,pending.theme,pending.fontSize);
-  };
-
-'''
-if 'window.beginChunkedMarkdown' not in s:
-    if marker not in s:
-        raise SystemExit('Expected renderMarkdown marker not found')
-    s = s.replace(marker, chunk_api + marker, 1)
+old_about = 'private void about(){message("MD Reader 0.9.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، تنزيل ملفات Markdown العامة مباشرة من GitHub، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\\n\\nلا إعلانات • لا تحليلات • لا تتبع\\n\\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}'
+new_about = 'private void about(){message("MD Reader 0.10.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، مربعات الاختيار والإجابات الصحيحة المظللة، أدوات مباشرة لتحديد الإجابة الصحيحة وتوحيد مربعات الاختيار، معاينة محسنة للملفات الكبيرة، تنزيل ملفات Markdown العامة مباشرة من GitHub، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\\n\\nلا إعلانات • لا تحليلات • لا تتبع\\n\\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}'
+replace_once(old_about, new_about, 'about version and features')
 
 path.write_text(s)
-print('v0.10 reader chunk transport migration applied.')
+print('v0.10 MainActivity final polish applied.')
