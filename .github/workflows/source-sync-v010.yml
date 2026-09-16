@@ -24,12 +24,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- app/src/main/java/app/mdreader/mobile/MainActivity.java; then
+          if git diff --quiet -- app/src/main/java/app/mdreader/mobile/MainActivity.java app/src/main/assets/reader.html; then
             echo 'No source migration needed.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/java/app/mdreader/mobile/MainActivity.java
-          git commit -m 'Integrate v0.10 editor task tools and preview transport'
+          git add app/src/main/java/app/mdreader/mobile/MainActivity.java app/src/main/assets/reader.html
+          git commit -m 'Complete v0.10 task and large-preview integration'
           git push origin HEAD:feature/task-answer-highlights-performance
