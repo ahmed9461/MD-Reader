@@ -66,6 +66,7 @@ public class MainActivity extends Activity {
     private static final String PREF_TRANSLATION_ENGINE="translation_engine";
     private final Handler main=new Handler(Looper.getMainLooper());
     private final ExecutorService io=Executors.newSingleThreadExecutor();
+    private final ExecutorService previewIo=Executors.newSingleThreadExecutor();
     private final History history=new History();
     private final TranslationService translator=new TranslationService();
     private AiTranslationService aiTranslator;
@@ -88,7 +89,9 @@ public class MainActivity extends Activity {
     private String currentName="غير محفوظ.md",savedText="";
     private boolean dirty=false,editing=false,homeMode=true,readerReady=false,suppress=false,dark=false;
     private int fontSize=17,editorScrollPercent=EDITOR_SCROLL_DEFAULT,bg,surface,text,muted,border,accent;
-    private Runnable saveThen,draftPending;
+    private Runnable saveThen,draftPending,renderPending;
+    private int renderToken=0;
+    private static final int PREVIEW_CHUNK_CHARS=90000;
     private Dialog speechDialog;
     private TextView speechStatus,speechProgress,speechPlay,speechRate;
 
@@ -280,7 +283,10 @@ public class MainActivity extends Activity {
 
     private void extraMarkdownTools(){
         sheet("أدوات Markdown إضافية",
+                new Action("✅ إجابة صحيحة",()->setTaskState(true),false),
+                new Action("☐ اختيار غير محدد",()->setTaskState(false),false),
                 new Action("☑ قائمة مهام",this::insertTaskList,false),
+                new Action("🧹 توحيد مربعات الاختيار",this::normalizeTaskMarkers,false),
                 new Action("▦ جدول",()->insertMarkdownBlock("| العمود 1 | العمود 2 |"+System.lineSeparator()+"| --- | --- |"+System.lineSeparator()+"| قيمة | قيمة |"),false),
                 new Action("— فاصل أفقي",()->insertMarkdownBlock("---"),false),
                 new Action("إلغاء",null,false));
@@ -320,6 +326,96 @@ public class MainActivity extends Activity {
         int caret=Math.min(e.length(),lineStart+out.length());
         editor.setSelection(caret);
         editor.bringPointIntoView(caret);
+    }
+
+    private int taskMarkerState(String body){
+        if(body==null)return -1;
+        String value=body.stripLeading();
+        if(value.startsWith("✅"))return 1;
+        if(value.isEmpty())return -1;
+        char bullet=value.charAt(0);
+        if(bullet!='-'&&bullet!='*'&&bullet!='+')return -1;
+        int p=1;
+        while(p<value.length()&&(value.charAt(p)==' '||value.charAt(p)=='\t'))p++;
+        if(p>=value.length()||value.charAt(p)!='[')return -1;
+        int close=value.indexOf(']',p+1);
+        if(close<0)return -1;
+        String state=value.substring(p+1,close).trim();
+        if(state.isEmpty())return 0;
+        return state.equalsIgnoreCase("x")?1:-1;
+    }
+
+    private String taskBody(String body){
+        if(body==null)return "";
+        String value=body.stripLeading();
+        if(value.startsWith("✅"))return value.substring("✅".length()).stripLeading();
+        int state=taskMarkerState(value);
+        if(state<0)return value;
+        int p=1;
+        while(p<value.length()&&(value.charAt(p)==' '||value.charAt(p)=='\t'))p++;
+        int close=value.indexOf(']',p+1);
+        return close<0?value:value.substring(close+1).stripLeading();
+    }
+
+    private String taskLine(String line,boolean checked){
+        if(line==null)return "";
+        int p=0;
+        while(p<line.length()&&(line.charAt(p)==' '||line.charAt(p)=='\t'))p++;
+        String indent=line.substring(0,p),body=line.substring(p);
+        String clean=taskBody(body);
+        if(clean.isBlank())return line;
+        return indent+"- ["+(checked?"x":" ")+"] "+clean;
+    }
+
+    private int[] selectedLineBounds(){
+        String all=txt();
+        int a=Math.max(0,Math.min(editor.getSelectionStart(),editor.getSelectionEnd()));
+        int b=Math.max(a,Math.max(editor.getSelectionStart(),editor.getSelectionEnd()));
+        int start=all.lastIndexOf('\n',Math.max(0,a-1));start=start<0?0:start+1;
+        int end=all.indexOf('\n',b);if(end<0)end=all.length();
+        return new int[]{start,end};
+    }
+
+    private void setTaskState(boolean checked){
+        if(!editing)setEditing(true);
+        int[] bounds=selectedLineBounds();
+        Editable e=editor.getText();
+        String selected=e.subSequence(bounds[0],bounds[1]).toString();
+        String[] lines=selected.split("\\n",-1);
+        StringBuilder out=new StringBuilder();
+        for(int i=0;i<lines.length;i++){
+            if(i>0)out.append('\n');
+            out.append(taskLine(lines[i],checked));
+        }
+        e.replace(bounds[0],bounds[1],out.toString());
+        int end=Math.min(e.length(),bounds[0]+out.length());
+        editor.setSelection(end);
+        editor.bringPointIntoView(end);
+        Toast.makeText(this,checked?"تم تحديد الإجابة الصحيحة":"تم إنشاء اختيار غير محدد",Toast.LENGTH_SHORT).show();
+    }
+
+    private void normalizeTaskMarkers(){
+        if(!editing)setEditing(true);
+        String old=txt();
+        String[] lines=old.split("\\n",-1);
+        StringBuilder out=new StringBuilder(old.length()+32);
+        int changed=0;
+        for(int i=0;i<lines.length;i++){
+            if(i>0)out.append('\n');
+            String line=lines[i];
+            int p=0;while(p<line.length()&&(line.charAt(p)==' '||line.charAt(p)=='\t'))p++;
+            String body=line.substring(p);
+            int state=taskMarkerState(body);
+            if(state>=0){String normalized=taskLine(line,state==1);out.append(normalized);if(!normalized.equals(line))changed++;}
+            else out.append(line);
+        }
+        if(changed==0){Toast.makeText(this,"مربعات الاختيار سليمة بالفعل",Toast.LENGTH_SHORT).show();return;}
+        history.checkpoint(old);
+        int oldCaret=Math.max(0,editor.getSelectionStart());
+        String next=out.toString();
+        suppress=true;editor.setText(next);editor.setSelection(Math.min(next.length(),oldCaret));suppress=false;
+        history.checkpoint(next);dirty=!next.equals(savedText);scheduleDraft(next);updateTitle();
+        Toast.makeText(this,"تم توحيد "+changed+" سطر",Toast.LENGTH_SHORT).show();
     }
 
     private void configurePreview(){
@@ -388,7 +484,44 @@ public class MainActivity extends Activity {
     private void setEditing(boolean on){if(homeMode)showDocument();if(on==editing)return;if(on&&!editing)saveReadingPosition();if(!on&&editing)saveReadingPosition();editing=on;if(on){preview.setVisibility(View.GONE);editor.setVisibility(View.VISIBLE);formatBar.setVisibility(View.VISIBLE);restoreEditorPosition();}else{render();editor.setVisibility(View.GONE);formatBar.setVisibility(View.GONE);preview.setVisibility(View.VISIBLE);hideKeyboard();preview.postDelayed(this::restoreReadingPosition,220);}clearSearch();styleTabs();}
     private void styleTabs(){if(previewTab==null)return;styleTab(previewTab,!editing);styleTab(editTab,editing);}
     private void styleTab(TextView v,boolean selected){v.setTextColor(selected?Color.WHITE:text);v.setBackground(selected?round(accent,accent,10):round(Color.TRANSPARENT,border,10));}
-    private void render(){if(!readerReady||preview==null)return;String enc=Base64.encodeToString(txt().getBytes(StandardCharsets.UTF_8),Base64.NO_WRAP);preview.evaluateJavascript("window.renderMarkdown('"+enc+"','"+(dark?"dark":"light")+"',"+fontSize+");",null);}
+    private void render(){
+        if(!readerReady||preview==null||homeMode||editing)return;
+        if(renderPending!=null)main.removeCallbacks(renderPending);
+        final int token=++renderToken;
+        renderPending=()->{
+            renderPending=null;
+            if(token!=renderToken||preview==null||homeMode||editing)return;
+            final String source=txt();
+            final String theme=dark?"dark":"light";
+            final int size=fontSize;
+            previewIo.execute(()->{
+                final String encoded=Base64.encodeToString(source.getBytes(StandardCharsets.UTF_8),Base64.NO_WRAP);
+                main.post(()->{
+                    if(token!=renderToken||preview==null||homeMode||editing)return;
+                    if(encoded.length()<=PREVIEW_CHUNK_CHARS){
+                        preview.evaluateJavascript("window.renderMarkdown('"+encoded+"','"+theme+"',"+size+");",null);
+                    }else{
+                        preview.evaluateJavascript("window.beginChunkedMarkdown('"+theme+"',"+size+");",v->sendPreviewChunk(encoded,0,token));
+                    }
+                });
+            });
+        };
+        main.postDelayed(renderPending,32);
+    }
+
+    private void sendPreviewChunk(String encoded,int offset,int token){
+        if(token!=renderToken||preview==null||homeMode||editing)return;
+        if(offset>=encoded.length()){
+            preview.evaluateJavascript("window.finishChunkedMarkdown();",null);
+            return;
+        }
+        int end=Math.min(encoded.length(),offset+PREVIEW_CHUNK_CHARS);
+        if(end<encoded.length())end-=((end-offset)%4);
+        if(end<=offset)end=Math.min(encoded.length(),offset+4);
+        String chunk=encoded.substring(offset,end);
+        final int next=end;
+        preview.evaluateJavascript("window.appendMarkdownChunk('"+chunk+"');",v->sendPreviewChunk(encoded,next,token));
+    }
 
     private void more(){List<Action>a=new ArrayList<>();a.add(new Action("ملف جديد",this::newFile,false));a.add(new Action("تنزيل من GitHub",this::githubImport,false));if(!homeMode){a.add(new Action("حفظ باسم",this::saveAs,false));a.add(new Action("الفهرس",this::outline,false));a.add(new Action("التنقل السريع",this::documentNavigation,false));a.add(new Action("بحث واستبدال",this::searchReplaceDialog,false));a.add(new Action("سرعة تمرير التحرير",this::editorScrollSettings,false));a.add(new Action("القراءة بالصوت",this::speechMenu,false));a.add(new Action("إضافة علامة مرجعية",this::addBookmark,false));int bc=currentDocKey().isEmpty()?0:reading.bookmarks(currentDocKey()).size();a.add(new Action("العلامات المرجعية"+(bc>0?" ("+bc+")":""),this::bookmarks,false));a.add(new Action("الترجمة",this::translationMenu,false));a.add(new Action("حجم خط القراءة",this::fontDialog,false));a.add(new Action("تصدير PDF",this::pdf,false));a.add(new Action("مشاركة الملف",this::share,false));}a.add(new Action(dark?"الوضع الفاتح":"الوضع الداكن",this::toggleTheme,false));a.add(new Action("حول التطبيق",this::about,false));a.add(new Action("إلغاء",null,false));sheet(homeMode?"MD Reader":currentName,a.toArray(new Action[0]));}
     private void toggleTheme(){dark=!dark;prefs.edit().putBoolean(PREF_DARK,dark).apply();applyTheme();styleEditorToolbarExtras();}
@@ -666,7 +799,7 @@ public class MainActivity extends Activity {
     private void external(String s){try{Uri u=Uri.parse(s);String sc=u.getScheme();if(sc!=null&&(sc.equals("http")||sc.equals("https")||sc.equals("mailto")||sc.equals("tel")))startActivity(new Intent(Intent.ACTION_VIEW,u));}catch(Exception ignored){}}
     private String txt(){return editor==null?"":editor.getText().toString();}private int dp(int v){return Math.round(v*getResources().getDisplayMetrics().density);}private static int clamp(int v,int a,int b){return Math.max(a,Math.min(b,v));}private static String ensureMd(String n){if(n==null||n.isEmpty())n="document.md";String l=n.toLowerCase(Locale.ROOT);return l.endsWith(".md")||l.endsWith(".markdown")?n:n+".md";}private static String stripMd(String n){return n==null?"Markdown":n.replaceFirst("(?i)\\.(md|markdown)$","");}private static String repeat(String s,int n){StringBuilder b=new StringBuilder();for(int i=0;i<n;i++)b.append(s);return b.toString();}private String time(long t){return t<=0?"":DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(new Date(t));}
 
-    @Override protected void onDestroy(){if(draftPending!=null)main.removeCallbacks(draftPending);io.shutdownNow();if(speech!=null)speech.shutdown();aiTranslator.shutdown();history.cancel();if(preview!=null){preview.removeJavascriptInterface("Android");preview.destroy();}super.onDestroy();}
+    @Override protected void onDestroy(){if(draftPending!=null)main.removeCallbacks(draftPending);if(renderPending!=null)main.removeCallbacks(renderPending);renderToken++;previewIo.shutdownNow();io.shutdownNow();if(speech!=null)speech.shutdown();aiTranslator.shutdown();history.cancel();if(preview!=null){preview.removeJavascriptInterface("Android");preview.destroy();}super.onDestroy();}
     private class Bridge{@JavascriptInterface public void copyText(String s){runOnUiThread(()->{((ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("code",s==null?"":s));Toast.makeText(MainActivity.this,"تم النسخ",Toast.LENGTH_SHORT).show();});}@JavascriptInterface public void openLink(String s){runOnUiThread(()->external(s));}}
     private abstract static class Watcher implements TextWatcher{public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int b,int c){}}
     private class History{final List<String> undo=new ArrayList<>(),redo=new ArrayList<>();String cur="";Runnable pending;void reset(String s){cancel();undo.clear();redo.clear();cur=s==null?"":s;}void schedule(String s){cancel();pending=()->checkpoint(s);main.postDelayed(pending,450);}void checkpoint(String s){cancel();if(s==null)s="";if(s.equals(cur))return;undo.add(cur);if(undo.size()>80)undo.remove(0);cur=s;redo.clear();}String undo(String actual){cancel();if(!actual.equals(cur))checkpoint(actual);if(undo.isEmpty())return null;redo.add(cur);cur=undo.remove(undo.size()-1);return cur;}String redo(String actual){cancel();if(!actual.equals(cur))checkpoint(actual);if(redo.isEmpty())return null;undo.add(cur);cur=redo.remove(redo.size()-1);return cur;}void cancel(){if(pending!=null){main.removeCallbacks(pending);pending=null;}}}
