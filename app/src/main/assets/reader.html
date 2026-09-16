@@ -8,10 +8,14 @@
 :root{
   --bg:#fff;--text:#1f2328;--secondary:#656d76;--link:#0969da;--border:#d0d7de;
   --code:#f6f8fa;--quote:#d0d7de;--row:#f6f8fa;--font-size:17px;
+  --success:#1a7f37;--success-border:#2da44e;--success-bg:rgba(46,160,67,.12);
+  --task-empty:#8c959f;
 }
 [data-theme="dark"]{
   color-scheme:dark;--bg:#0d1117;--text:#e6edf3;--secondary:#8b949e;--link:#58a6ff;
   --border:#30363d;--code:#161b22;--quote:#30363d;--row:#161b22;
+  --success:#3fb950;--success-border:#3fb950;--success-bg:rgba(46,160,67,.18);
+  --task-empty:#6e7681;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;min-height:100%;background:var(--bg);color:var(--text)}
@@ -40,11 +44,26 @@ th{background:var(--code);font-weight:700} tr:nth-child(even){background:var(--r
 img{max-width:100%;height:auto;border-radius:8px}
 .front-matter{border:1px solid var(--border);border-radius:9px;overflow:hidden;margin:0 0 1.3em}
 .front-matter table{width:100%;min-width:0}.front-matter td:first-child{font-weight:700;white-space:nowrap;width:1%}
-.task-box{margin-inline-end:.55em;vertical-align:-.12em}
+
+/* Task lists are rendered by MD Reader itself so checked state is always visible,
+   including on Android WebView versions that gray out disabled native checkboxes. */
+li.task-item{list-style:none;position:relative;margin:.34em 0;padding:.18em .35em;border-radius:8px}
+li.task-item::marker{content:""}
+.task-box{display:inline-flex;width:1.2em;height:1.2em;margin-inline-end:.55em;vertical-align:-.16em;align-items:center;justify-content:center;border:2px solid var(--task-empty);border-radius:4px;font-size:.86em;font-weight:900;line-height:1;color:transparent;background:transparent;user-select:none}
+.task-item.task-checked{background:var(--success-bg);font-weight:700;color:var(--success);border-inline-start:4px solid var(--success-border)}
+.task-item.task-checked .task-box{border-color:var(--success-border);background:var(--success-border);color:#fff}
+.correct-answer{background:var(--success-bg);color:var(--success);font-weight:700;border-inline-start:4px solid var(--success-border);border-radius:8px;padding:.28em .55em}
+.task-item.correct-answer{padding:.18em .35em}
+
 .mermaid{margin:1.2em 0;text-align:center;overflow:auto}
 .mermaid-error{border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--secondary)}
 .search-current{outline:2px solid #f59e0b}
 .empty{color:var(--secondary);text-align:center;margin-top:28vh}
+
+/* On large documents, Chromium can skip painting off-screen top-level blocks while
+   preserving layout. This substantially reduces initial preview work. */
+#content.large-document>.md-virtual-block{content-visibility:auto;contain-intrinsic-size:auto 96px}
+
 /* True mixed-direction rendering: each semantic block gets dir=auto in JS. */
 [dir="rtl"]{text-align:right}
 [dir="ltr"]{text-align:left}
@@ -58,8 +77,13 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
 <script>
 (function(){
   const content = document.getElementById('content');
+  const LARGE_DOCUMENT_CHARS = 180000;
   let currentTheme = 'light';
   let mermaidLoadPromise = null;
+  let codeObserver = null;
+  let mermaidObserver = null;
+  let renderGeneration = 0;
+  let chunkedMarkdown = null;
 
   function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   const md = window.markdownit({
@@ -69,12 +93,19 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
     breaks:true,
     highlight:function(str,lang){
       if(lang && lang.toLowerCase()==='mermaid') return esc(str);
-      if(lang && window.hljs && hljs.getLanguage(lang)){
-        try{return hljs.highlight(str,{language:lang}).value;}catch(_){ }
-      }
-      return '';
+      // Highlighting is intentionally deferred until the code block is visible.
+      // Returning escaped source here avoids doing the same expensive work twice.
+      return esc(str);
     }
   });
+
+  function normalizeTaskSyntax(source){
+    // Accept standard Markdown task syntax and common human variants:
+    // - [x], -[x], - [ x ], * [X], + [ ]
+    // The source file is not modified; normalization only affects preview rendering.
+    return String(source||'').replace(/^([\t ]*)[-+*][\t ]*\[[\t ]*([xX]?)[\t ]*\][\t ]*/gm,
+      function(_,indent,state){return indent+'- ['+(state?'x':' ')+'] ';});
+  }
 
   function frontMatter(source){
     if(!source.startsWith('---\n') && !source.startsWith('---\r\n')) return {source,html:''};
@@ -125,7 +156,6 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
   }
 
   function applyDirections(){
-    // Semantic content follows its own first strong character instead of inheriting one global direction.
     content.querySelectorAll('table,ul,ol').forEach(el=>el.setAttribute('dir','auto'));
     content.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,blockquote,th,td,figcaption,dd,dt').forEach(el=>el.setAttribute('dir','auto'));
     applyCodeDirections();
@@ -133,33 +163,83 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
 
   function enhanceTables(){
     content.querySelectorAll('table').forEach(t=>{
-      if(t.closest('.front-matter') || t.parentElement.classList.contains('table-wrap')) return;
+      if(t.closest('.front-matter') || (t.parentElement&&t.parentElement.classList.contains('table-wrap'))) return;
       const w=document.createElement('div');w.className='table-wrap';t.parentNode.insertBefore(w,t);w.appendChild(t);
     });
+  }
+
+  function makeTaskBox(checked){
+    const box=document.createElement('span');
+    box.className='task-box';
+    box.setAttribute('role','checkbox');
+    box.setAttribute('aria-checked',checked?'true':'false');
+    box.setAttribute('aria-disabled','true');
+    box.textContent=checked?'✓':'';
+    return box;
   }
 
   function enhanceTasks(){
     content.querySelectorAll('li').forEach(li=>{
       const html=li.innerHTML;
-      const m=html.match(/^\s*\[([ xX])\]\s+/);
+      const m=html.match(/^\s*\[([ xX])\]\s*/);
       if(!m)return;
-      const cb=document.createElement('input');cb.type='checkbox';cb.disabled=true;cb.className='task-box';cb.checked=m[1].toLowerCase()==='x';
-      li.innerHTML=html.replace(/^\s*\[[ xX]\]\s+/,'');li.insertBefore(cb,li.firstChild);
+      const checked=m[1].toLowerCase()==='x';
+      li.classList.add('task-item');
+      if(checked){li.classList.add('task-checked','correct-answer');}
+      li.innerHTML=html.replace(/^\s*\[[ xX]\]\s*/,'');
+      li.insertBefore(makeTaskBox(checked),li.firstChild);
+    });
+  }
+
+  function enhanceCorrectAnswers(){
+    // Existing quiz banks often use a literal ✅ instead of task-list syntax.
+    // Keep the emoji intact but give the whole answer the same semantic highlight.
+    content.querySelectorAll('p,li').forEach(el=>{
+      if(el.classList.contains('task-checked'))return;
+      const text=(el.textContent||'').trim();
+      if(text.startsWith('✅'))el.classList.add('correct-answer');
     });
   }
 
   function enhanceCode(){
     content.querySelectorAll('pre').forEach(pre=>{
-      if(pre.closest('.code-shell') || pre.classList.contains('mermaid-source'))return;
+      const code=pre.querySelector(':scope > code');
+      if(code&&languageOfCode(code)==='mermaid')return;
+      if(pre.closest('.code-shell'))return;
       const shell=document.createElement('div');shell.className='code-shell';shell.setAttribute('dir',pre.getAttribute('dir')||firstStrongDirection(pre.textContent));pre.parentNode.insertBefore(shell,pre);shell.appendChild(pre);
       const b=document.createElement('button');b.className='copy-code';b.type='button';b.textContent='نسخ';
-      b.onclick=()=>{const code=pre.textContent||''; if(window.Android&&Android.copyText)Android.copyText(code); b.textContent='تم';setTimeout(()=>b.textContent='نسخ',900);};
+      b.onclick=()=>{const value=pre.textContent||''; if(window.Android&&Android.copyText)Android.copyText(value); b.textContent='تم';setTimeout(()=>b.textContent='نسخ',900);};
       shell.appendChild(b);
     });
   }
 
   function assignHeadings(){
     let i=0;content.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h=>{h.dataset.headingIndex=String(i);h.id='md-heading-'+i;i++;});
+  }
+
+  function enableLargeDocumentPainting(large){
+    content.classList.toggle('large-document',large);
+    content.querySelectorAll(':scope > *').forEach(el=>el.classList.toggle('md-virtual-block',large));
+  }
+
+  function cleanupDeferredWork(){
+    if(codeObserver){codeObserver.disconnect();codeObserver=null;}
+    if(mermaidObserver){mermaidObserver.disconnect();mermaidObserver=null;}
+  }
+
+  function highlightOne(code){
+    if(!window.hljs||!code||code.classList.contains('hljs')||languageOfCode(code)==='mermaid')return;
+    try{hljs.highlightElement(code);}catch(_){ }
+  }
+
+  function setupCodeHighlighting(large){
+    const nodes=Array.from(content.querySelectorAll('pre code:not(.language-mermaid)'));
+    if(!nodes.length||!window.hljs)return;
+    if(!large||!('IntersectionObserver' in window)){nodes.forEach(highlightOne);return;}
+    codeObserver=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{if(entry.isIntersecting){highlightOne(entry.target);codeObserver.unobserve(entry.target);}});
+    },{root:null,rootMargin:'700px 0px'});
+    nodes.forEach(node=>codeObserver.observe(node));
   }
 
   function ensureMermaid(){
@@ -172,31 +252,88 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
     return mermaidLoadPromise;
   }
 
-  async function renderMermaid(){
-    const codeNodes=Array.from(content.querySelectorAll('pre>code.language-mermaid'));
-    if(!codeNodes.length)return;
-    const nodes=[];
-    codeNodes.forEach(code=>{
-      const pre=code.parentElement;const div=document.createElement('div');div.className='mermaid';div.textContent=code.textContent;pre.replaceWith(div);nodes.push(div);
-    });
+  async function renderMermaidPre(pre,generation){
+    if(!pre||!pre.isConnected||generation!==renderGeneration)return;
+    const code=pre.querySelector(':scope > code.language-mermaid');
+    if(!code)return;
+    const src=code.textContent||'';
+    const div=document.createElement('div');div.className='mermaid';div.textContent=src;
+    pre.replaceWith(div);
     try{
       await ensureMermaid();
+      if(generation!==renderGeneration||!div.isConnected)return;
       mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:currentTheme==='dark'?'dark':'default'});
-      await mermaid.run({nodes});
+      await mermaid.run({nodes:[div]});
     }catch(e){
-      nodes.forEach(n=>{if(!n.querySelector('svg')){const src=n.textContent;n.className='mermaid-error';n.innerHTML='<div>تعذر رسم Mermaid</div><pre dir="ltr"><code>'+esc(src)+'</code></pre>';}});
+      if(!div.querySelector('svg')){div.className='mermaid-error';div.innerHTML='<div>تعذر رسم Mermaid</div><pre dir="ltr"><code>'+esc(src)+'</code></pre>';}
     }
   }
 
+  async function setupMermaid(large,generation){
+    const pres=Array.from(content.querySelectorAll('pre')).filter(pre=>{const code=pre.querySelector(':scope > code');return code&&languageOfCode(code)==='mermaid';});
+    if(!pres.length)return;
+    if(!large||!('IntersectionObserver' in window)){
+      for(const pre of pres){if(generation!==renderGeneration)return;await renderMermaidPre(pre,generation);}
+      return;
+    }
+    mermaidObserver=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{if(entry.isIntersecting){mermaidObserver.unobserve(entry.target);renderMermaidPre(entry.target,generation);}});
+    },{root:null,rootMargin:'900px 0px'});
+    pres.forEach(pre=>mermaidObserver.observe(pre));
+  }
+
+  function decodeBase64Utf8(encoded){
+    try{
+      const bin=atob(encoded);const bytes=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+      return new TextDecoder('utf-8').decode(bytes);
+    }catch(e){return '';}
+  }
+
+  window.beginChunkedMarkdown = function(theme,fontSize){
+    chunkedMarkdown={theme:theme||'light',fontSize:fontSize||17,parts:[]};
+  };
+
+  window.appendMarkdownChunk = function(encodedPart){
+    if(!chunkedMarkdown)return;
+    chunkedMarkdown.parts.push(String(encodedPart||''));
+  };
+
+  window.finishChunkedMarkdown = function(){
+    const pending=chunkedMarkdown;
+    chunkedMarkdown=null;
+    if(!pending)return;
+    const encoded=pending.parts.join('');
+    pending.parts.length=0;
+    window.renderMarkdown(encoded,pending.theme,pending.fontSize);
+  };
+
   window.renderMarkdown = async function(encoded,theme,fontSize){
+    const generation=++renderGeneration;
+    cleanupDeferredWork();
     currentTheme=theme||'light';document.body.dataset.theme=currentTheme;document.documentElement.dataset.theme=currentTheme;
     document.documentElement.style.setProperty('--font-size',(fontSize||17)+'px');
-    let source='';try{const bin=atob(encoded);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);source=new TextDecoder('utf-8').decode(bytes);}catch(e){source='';}
-    const fm=frontMatter(source);content.innerHTML=fm.html+md.render(fm.source);
-    if(!content.innerHTML.trim())content.innerHTML='<div class="empty">الملف فارغ</div>';
-    applyDirections();enhanceTasks();enhanceTables();assignHeadings();await renderMermaid();enhanceCode();applyDirections();
-    if(window.hljs){content.querySelectorAll('pre code:not(.language-mermaid)').forEach(el=>{if(!el.classList.contains('hljs')){try{hljs.highlightElement(el);}catch(_){}}});}
-    window.scrollTo(0,0);
+
+    let source=normalizeTaskSyntax(decodeBase64Utf8(encoded));
+    const large=source.length>=LARGE_DOCUMENT_CHARS;
+    const fm=frontMatter(source);
+    source='';
+
+    // One HTML assignment, one direction pass, and deferred expensive renderers.
+    // This avoids the former double DOM walk/highlight cost on large files.
+    content.innerHTML=fm.html+md.render(fm.source);
+    if(generation!==renderGeneration)return;
+    if(!content.innerHTML.trim()){content.innerHTML='<div class="empty">الملف فارغ</div>';return;}
+
+    enhanceTasks();
+    enhanceCorrectAnswers();
+    enhanceTables();
+    assignHeadings();
+    enableLargeDocumentPainting(large);
+    enhanceCode();
+    applyDirections();
+    setupCodeHighlighting(large);
+    await setupMermaid(large,generation);
   };
 
   window.scrollToHeading=function(index){const h=content.querySelector('[data-heading-index="'+index+'"]');if(h)h.scrollIntoView({behavior:'smooth',block:'start'});};
