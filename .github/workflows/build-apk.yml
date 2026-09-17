@@ -1,4 +1,4 @@
-name: Build MD Reader v0.10.0 Release
+name: Build MD Reader v0.11.0 Release
 
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ jobs:
       - name: Checkout normalized source
         uses: actions/checkout@v4
 
-      - name: Assert direct-source architecture and v0.10 features
+      - name: Assert direct-source architecture and v0.11 features
         shell: bash
         run: |
           set -euo pipefail
@@ -35,17 +35,16 @@ jobs:
           test -s app/src/main/java/app/mdreader/mobile/SearchReplaceEngine.java
           test -s app/src/main/java/app/mdreader/mobile/FlingEditText.java
           test -s app/src/main/java/app/mdreader/mobile/GitHubMarkdownSource.java
+          test -s app/src/main/java/app/mdreader/mobile/SafeHtmlEditorTools.java
+          test -s app/src/main/assets/js/mdreader-safe-html.js
           test -s app/src/main/res/drawable-nodpi/ic_launcher_art.webp
+          ! test -e tools/one_time_v011_integrate.py
+          ! test -e .github/workflows/one-time-v011-safe-html.yml
           ! grep -q 'apply_editor_ux_v07.py' .github/workflows/build-apk.yml
           ! grep -q 'v0.5-mainactivity.patch' .github/workflows/build-apk.yml
-          ! test -e tools/source_sync_v010.py
-          ! test -e tools/perf_polish_v010.py
-          ! test -e .github/workflows/source-sync-v010.yml
-          ! test -e .github/workflows/compat-fix-v010.yml
-          ! test -e .github/workflows/perf-polish-v010.yml
           ! grep -q 'AdjustableScroller' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q "versionName '0.10.0'" app/build.gradle
-          grep -q "versionCode 13" app/build.gradle
+          grep -q "versionName '0.11.0'" app/build.gradle
+          grep -q "versionCode 14" app/build.gradle
           grep -q 'new FlingEditText(this)' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'setFlingSpeedPercent' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'boolean scrollable=aa!=null&&aa.length>7' app/src/main/java/app/mdreader/mobile/MainActivity.java
@@ -56,26 +55,22 @@ jobs:
           grep -q 'GitHubMarkdownSource.download' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'setTaskState(boolean checked)' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'normalizeTaskMarkers' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'trimLeadingCompat' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          ! grep -q '\.stripLeading()' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          ! grep -q '\.isBlank()' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'PREVIEW_CHUNK_CHARS=90000' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'LARGE_EDITOR_DEBOUNCE_CHARS=120000' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'LARGE_HISTORY_LIMIT=20' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'main.postDelayed(editorMaintenancePending,220)' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'previewIo=Executors.newSingleThreadExecutor' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'window.beginChunkedMarkdown' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'MD Reader 0.10.0' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'breaks:true' app/src/main/assets/reader.html
+          grep -q 'safeHtmlTools' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'customHtmlColor' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'MD Reader 0.11.0' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'html:true' app/src/main/assets/reader.html
+          grep -q 'MDReaderSafeHtml.sanitize' app/src/main/assets/reader.html
+          grep -q 'Content-Security-Policy' app/src/main/assets/reader.html
+          grep -q 'dompurify@3.2.6' tools/fetch-vendor-assets.sh
           grep -q 'normalizeTaskSyntax' app/src/main/assets/reader.html
           grep -q 'task-checked' app/src/main/assets/reader.html
-          grep -q 'correct-answer' app/src/main/assets/reader.html
           grep -q 'LARGE_DOCUMENT_CHARS = 180000' app/src/main/assets/reader.html
           grep -q 'IntersectionObserver' app/src/main/assets/reader.html
           grep -q 'content-visibility:auto' app/src/main/assets/reader.html
           grep -q 'window.beginChunkedMarkdown' app/src/main/assets/reader.html
-          grep -q 'window.appendMarkdownChunk' app/src/main/assets/reader.html
-          grep -q 'window.finishChunkedMarkdown' app/src/main/assets/reader.html
           grep -q 'android:windowSoftInputMode="adjustResize"' app/src/main/AndroidManifest.xml
 
       - name: Set up JDK 17
@@ -116,21 +111,26 @@ jobs:
             app/src/main/java/app/mdreader/mobile/MarkdownSpeechPlan.java \
             app/src/main/java/app/mdreader/mobile/SearchReplaceEngine.java \
             app/src/main/java/app/mdreader/mobile/GitHubMarkdownSource.java \
+            app/src/main/java/app/mdreader/mobile/SafeHtmlEditorTools.java \
             tools/TransformSmokeTest.java \
             tools/TranslationPlanSmokeTest.java \
             tools/SpeechPlanSmokeTest.java \
             tools/SearchReplaceSmokeTest.java \
-            tools/GitHubMarkdownSourceSmokeTest.java
+            tools/GitHubMarkdownSourceSmokeTest.java \
+            tools/SafeHtmlEditorToolsSmokeTest.java
           java -cp build/smoke TransformSmokeTest
           java -cp build/smoke app.mdreader.mobile.TranslationPlanSmokeTest
           java -cp build/smoke app.mdreader.mobile.SpeechPlanSmokeTest
           java -cp build/smoke app.mdreader.mobile.SearchReplaceSmokeTest
           java -cp build/smoke app.mdreader.mobile.GitHubMarkdownSourceSmokeTest
+          java -cp build/smoke app.mdreader.mobile.SafeHtmlEditorToolsSmokeTest
 
-      - name: Check reader JavaScript syntax
+      - name: Check reader JavaScript syntax and HTML policy
         shell: bash
         run: |
           set -euo pipefail
+          test -s app/src/main/assets/js/purify.min.js
+          node --check app/src/main/assets/js/mdreader-safe-html.js
           python3 - <<'PY'
           from pathlib import Path
           s = Path('app/src/main/assets/reader.html').read_text()
@@ -140,7 +140,7 @@ jobs:
           PY
           node --check /tmp/reader-inline.js
 
-      - name: Check task syntax and large-document compatibility
+      - name: Check task, safe HTML, and large-document compatibility
         shell: bash
         run: |
           set -euo pipefail
@@ -148,6 +148,7 @@ jobs:
           from pathlib import Path
           html = Path('app/src/main/assets/reader.html').read_text()
           java = Path('app/src/main/java/app/mdreader/mobile/MainActivity.java').read_text()
+          safe = Path('app/src/main/assets/js/mdreader-safe-html.js').read_text()
           assert 'normalizeTaskSyntax' in html
           assert '- [x], -[x], - [ x ]' in html
           assert "startsWith('✅')" in html
@@ -160,15 +161,24 @@ jobs:
           assert 'window.finishChunkedMarkdown' in html
           assert 'setTaskState(boolean checked)' in java
           assert 'normalizeTaskMarkers' in java
-          assert 'trimLeadingCompat' in java
-          assert '.stripLeading()' not in java
-          assert '.isBlank()' not in java
           assert 'PREVIEW_CHUNK_CHARS=90000' in java
           assert 'LARGE_EDITOR_DEBOUNCE_CHARS=120000' in java
-          assert 'LARGE_HISTORY_LIMIT=20' in java
           assert 'main.postDelayed(editorMaintenancePending,220)' in java
           assert 'previewIo.execute' in java
-          print('Task and large-document compatibility assertions passed.')
+          assert 'safeHtmlTools' in java and 'customHtmlColor' in java
+          assert 'html:true' in html
+          assert 'MDReaderSafeHtml.sanitize(rawHtml)' in html
+          assert 'Content-Security-Policy' in html
+          assert 'ALLOWED_TAGS' in safe and 'ALLOWED_ATTR' in safe and 'FORBID_TAGS' in safe
+          for tag in ('script','iframe','object','embed','form','svg','math','video','audio'):
+              assert "'" + tag + "'" in safe
+          assert 'sanitizeStyle' in safe
+          assert r'url\s*\(' in safe
+          assert r'expression\s*\(' in safe
+          assert r'javascript\s*:' in safe
+          assert 'DOMPurify.sanitize' in safe
+          assert 'ALLOW_UNKNOWN_PROTOCOLS:false' in safe
+          print('Task, safe HTML, and large-document compatibility assertions passed.')
           PY
 
       - name: Build optimized ARM64 release APK
@@ -183,7 +193,7 @@ jobs:
             find app/build/outputs/apk -type f -print || true
             exit 1
           fi
-          cp "$ARM64_APK" dist/MD-Reader-v0.10.0-arm64-release-unsigned.apk
+          cp "$ARM64_APK" dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk
 
       - name: Build optimized App Bundle separately
         shell: bash
@@ -197,20 +207,23 @@ jobs:
             find app/build/outputs/bundle -type f -print || true
             exit 1
           fi
-          cp "$AAB" dist/MD-Reader-v0.10.0-release-unsigned.aab
+          cp "$AAB" dist/MD-Reader-v0.11.0-release-unsigned.aab
 
       - name: Verify optimized outputs
         shell: bash
         run: |
           set -euo pipefail
-          test -s dist/MD-Reader-v0.10.0-arm64-release-unsigned.apk
-          test -s dist/MD-Reader-v0.10.0-release-unsigned.aab
-          unzip -l dist/MD-Reader-v0.10.0-arm64-release-unsigned.apk > /tmp/apk-list.txt
+          test -s dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk
+          test -s dist/MD-Reader-v0.11.0-release-unsigned.aab
+          unzip -l dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk > /tmp/apk-list.txt
           grep -q 'lib/arm64-v8a/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86_64/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/armeabi-v7a/libtranslate_jni.so' /tmp/apk-list.txt
-          unzip -l dist/MD-Reader-v0.10.0-release-unsigned.aab > /tmp/aab-list.txt
+          grep -q 'assets/js/purify.min.js' /tmp/apk-list.txt
+          grep -q 'assets/js/mdreader-safe-html.js' /tmp/apk-list.txt
+          grep -q 'assets/reader.html' /tmp/apk-list.txt
+          unzip -l dist/MD-Reader-v0.11.0-release-unsigned.aab > /tmp/aab-list.txt
           grep -q 'base/lib/arm64-v8a/libtranslate_jni.so' /tmp/aab-list.txt
           grep -q 'base/lib/armeabi-v7a/libtranslate_jni.so' /tmp/aab-list.txt
           mkdir -p dist/signing-tools/lib
@@ -219,13 +232,14 @@ jobs:
           chmod +x dist/signing-tools/apksigner
           sha256sum dist/*.apk dist/*.aab > dist/SHA256SUMS.txt
           {
-            echo "version=0.10.0"
-            echo "versionCode=13"
-            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.10.0-arm64-release-unsigned.apk)"
-            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.10.0-release-unsigned.aab)"
+            echo "version=0.11.0"
+            echo "versionCode=14"
+            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk)"
+            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.11.0-release-unsigned.aab)"
             echo "minified=true"
             echo "resources_shrunk=true"
             echo "apk_abi=arm64-v8a"
+            echo "safe_html=dompurify+allowlist+csp"
             echo "signed=false"
           } > dist/release-info.txt
           cat dist/release-info.txt
@@ -254,9 +268,9 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: MD-Reader-v0.10.0-arm64-unsigned
+          name: MD-Reader-v0.11.0-arm64-unsigned
           path: |
-            dist/MD-Reader-v0.10.0-arm64-release-unsigned.apk
+            dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk
             dist/SHA256SUMS.txt
             dist/release-info.txt
           if-no-files-found: error
