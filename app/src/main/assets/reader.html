@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self' data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <link rel="stylesheet" href="css/highlight-github.css">
 <style>
 :root{
@@ -42,6 +43,11 @@ table{border-collapse:collapse;min-width:100%;width:max-content;max-width:none}
 th,td{border:1px solid var(--border);padding:8px 12px;text-align:start;vertical-align:top;white-space:normal}
 th{background:var(--code);font-weight:700} tr:nth-child(even){background:var(--row)}
 img{max-width:100%;height:auto;border-radius:8px}
+mark{background:#fff8c5;color:inherit;padding:.05em .18em;border-radius:4px}
+[data-theme="dark"] mark{background:#5b4a12;color:inherit}
+kbd{display:inline-block;padding:.08em .42em;border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;background:var(--code);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88em}
+details{border:1px solid var(--border);border-radius:9px;padding:.55em .75em;margin:.8em 0;background:var(--code)}
+summary{cursor:pointer;font-weight:700}
 .front-matter{border:1px solid var(--border);border-radius:9px;overflow:hidden;margin:0 0 1.3em}
 .front-matter table{width:100%;min-width:0}.front-matter td:first-child{font-weight:700;white-space:nowrap;width:1%}
 
@@ -72,6 +78,8 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
 </style>
 <script src="js/markdown-it.min.js"></script>
 <script src="js/highlight.min.js"></script>
+<script src="js/purify.min.js"></script>
+<script src="js/mdreader-safe-html.js"></script>
 </head>
 <body data-theme="light"><main id="content"><div class="empty">افتح ملف Markdown للبدء</div></main>
 <script>
@@ -87,7 +95,7 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
 
   function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   const md = window.markdownit({
-    html:false,
+    html:true,
     linkify:true,
     typographer:true,
     breaks:true,
@@ -321,7 +329,9 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
 
     // One HTML assignment, one direction pass, and deferred expensive renderers.
     // This avoids the former double DOM walk/highlight cost on large files.
-    content.innerHTML=fm.html+md.render(fm.source);
+    const rawHtml=fm.html+md.render(fm.source);
+    const safeHtml=(window.MDReaderSafeHtml&&typeof window.MDReaderSafeHtml.sanitize==='function')?window.MDReaderSafeHtml.sanitize(rawHtml):esc(rawHtml);
+    content.innerHTML=safeHtml;
     if(generation!==renderGeneration)return;
     if(!content.innerHTML.trim()){content.innerHTML='<div class="empty">الملف فارغ</div>';return;}
 

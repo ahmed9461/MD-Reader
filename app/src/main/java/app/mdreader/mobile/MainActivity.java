@@ -137,7 +137,7 @@ public class MainActivity extends Activity {
         format("↶",v->undo());format("↷",v->redo());divider(); format("H1",v->heading(1));format("H2",v->heading(2));format("H3",v->heading(3));divider();
         format("B",v->wrap("**","**","نص"));format("I",v->wrap("*","*","نص"));format("S",v->wrap("~~","~~","نص"));format("` `",v->wrap("`","`","code"));format("```",v->apply(MarkdownTransforms.fencedCode(txt(),editor.getSelectionStart(),editor.getSelectionEnd())));divider();
         format("❝",v->prefix("> ",false));format("•",v->prefix("- ",false));format("1.",v->prefix("",true));format("☑",v->setTaskState(false));divider();
-        format("رابط",v->apply(MarkdownTransforms.link(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),false)));format("صورة",v->apply(MarkdownTransforms.link(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),true)));format("جدول",v->insert("\n| العمود 1 | العمود 2 |\n| --- | --- |\n| قيمة 1 | قيمة 2 |\n"));format("—",v->insert("\n---\n"));divider();format("ترجمة",v->translationMenu());
+        format("رابط",v->apply(MarkdownTransforms.link(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),false)));format("صورة",v->apply(MarkdownTransforms.link(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),true)));format("جدول",v->insert("\n| العمود 1 | العمود 2 |\n| --- | --- |\n| قيمة 1 | قيمة 2 |\n"));format("—",v->insert("\n---\n"));format("HTML",v->safeHtmlTools());divider();format("ترجمة",v->translationMenu());
     }
 
     private void configureEditor(){
@@ -192,8 +192,8 @@ public class MainActivity extends Activity {
         extraToolsBtn=mini("＋",false);
         extraToolsBtn.setTextSize(23);
         extraToolsBtn.setGravity(Gravity.CENTER);
-        extraToolsBtn.setContentDescription("أدوات Markdown إضافية");
-        extraToolsBtn.setTooltipText("أدوات إضافية");
+        extraToolsBtn.setContentDescription("أدوات Markdown وHTML");
+        extraToolsBtn.setTooltipText("أدوات Markdown وHTML");
         extraToolsBtn.setOnClickListener(v->extraMarkdownTools());
 
         LinearLayout.LayoutParams navLp=new LinearLayout.LayoutParams(dp(48),dp(42));
@@ -303,14 +303,88 @@ public class MainActivity extends Activity {
     }
 
     private void extraMarkdownTools(){
-        sheet("أدوات Markdown إضافية",
+        sheet("أدوات Markdown وHTML",
                 new Action("✅ إجابة صحيحة",()->setTaskState(true),false),
                 new Action("☐ اختيار غير محدد",()->setTaskState(false),false),
                 new Action("☑ قائمة مهام",this::insertTaskList,false),
                 new Action("🧹 توحيد مربعات الاختيار",this::normalizeTaskMarkers,false),
+                new Action("◇ HTML آمن",this::safeHtmlTools,false),
                 new Action("▦ جدول",()->insertMarkdownBlock("| العمود 1 | العمود 2 |"+System.lineSeparator()+"| --- | --- |"+System.lineSeparator()+"| قيمة | قيمة |"),false),
                 new Action("— فاصل أفقي",()->insertMarkdownBlock("---"),false),
                 new Action("إلغاء",null,false));
+    }
+
+    private void safeHtmlTools(){
+        sheet("HTML آمن",
+                new Action("🖍 تظليل <mark>",()->apply(SafeHtmlEditorTools.highlight(txt(),editor.getSelectionStart(),editor.getSelectionEnd())),false),
+                new Action("U تسطير <u>",()->apply(SafeHtmlEditorTools.underline(txt(),editor.getSelectionStart(),editor.getSelectionEnd())),false),
+                new Action("A لون النص…",this::safeHtmlTextColorMenu,false),
+                new Action("▣ لون الخلفية…",this::safeHtmlBackgroundMenu,false),
+                new Action("↔ محاذاة…",this::safeHtmlAlignmentMenu,false),
+                new Action("RTL/LTR اتجاه النص…",this::safeHtmlDirectionMenu,false),
+                new Action("x² نص علوي <sup>",()->apply(SafeHtmlEditorTools.superscript(txt(),editor.getSelectionStart(),editor.getSelectionEnd())),false),
+                new Action("x₂ نص سفلي <sub>",()->apply(SafeHtmlEditorTools.subscript(txt(),editor.getSelectionStart(),editor.getSelectionEnd())),false),
+                new Action("⌨ مفتاح <kbd>",()->apply(SafeHtmlEditorTools.keyboard(txt(),editor.getSelectionStart(),editor.getSelectionEnd())),false),
+                new Action("ᵃ نص صغير <small>",()->apply(SafeHtmlEditorTools.small(txt(),editor.getSelectionStart(),editor.getSelectionEnd())),false),
+                new Action("▾ تفاصيل قابلة للطي",()->apply(SafeHtmlEditorTools.details(txt(),editor.getSelectionStart(),editor.getSelectionEnd())),false),
+                new Action("↵ سطر HTML <br>",()->apply(SafeHtmlEditorTools.lineBreak(txt(),editor.getSelectionStart(),editor.getSelectionEnd())),false),
+                new Action("إلغاء",null,false));
+    }
+
+    private void safeHtmlTextColorMenu(){
+        sheet("لون النص",
+                new Action("أزرق  #0969DA",()->applyHtmlColor(false,"#0969DA"),false),
+                new Action("أخضر  #1A7F37",()->applyHtmlColor(false,"#1A7F37"),false),
+                new Action("أحمر  #CF222E",()->applyHtmlColor(false,"#CF222E"),false),
+                new Action("برتقالي  #BC4C00",()->applyHtmlColor(false,"#BC4C00"),false),
+                new Action("بنفسجي  #8250DF",()->applyHtmlColor(false,"#8250DF"),false),
+                new Action("رمادي  #656D76",()->applyHtmlColor(false,"#656D76"),false),
+                new Action("لون مخصص…",()->customHtmlColor(false),false),
+                new Action("إلغاء",null,false));
+    }
+
+    private void safeHtmlBackgroundMenu(){
+        sheet("لون الخلفية",
+                new Action("أصفر فاتح  #FFF8C5",()->applyHtmlColor(true,"#FFF8C5"),false),
+                new Action("أخضر فاتح  #DAFBE1",()->applyHtmlColor(true,"#DAFBE1"),false),
+                new Action("أزرق فاتح  #DDF4FF",()->applyHtmlColor(true,"#DDF4FF"),false),
+                new Action("أحمر فاتح  #FFEBE9",()->applyHtmlColor(true,"#FFEBE9"),false),
+                new Action("بنفسجي فاتح  #FBEFFF",()->applyHtmlColor(true,"#FBEFFF"),false),
+                new Action("رمادي فاتح  #F6F8FA",()->applyHtmlColor(true,"#F6F8FA"),false),
+                new Action("لون مخصص…",()->customHtmlColor(true),false),
+                new Action("إلغاء",null,false));
+    }
+
+    private void safeHtmlAlignmentMenu(){
+        sheet("محاذاة HTML",
+                new Action("توسيط",()->apply(SafeHtmlEditorTools.alignment(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),"center")),false),
+                new Action("يمين",()->apply(SafeHtmlEditorTools.alignment(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),"right")),false),
+                new Action("يسار",()->apply(SafeHtmlEditorTools.alignment(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),"left")),false),
+                new Action("ضبط",()->apply(SafeHtmlEditorTools.alignment(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),"justify")),false),
+                new Action("إلغاء",null,false));
+    }
+
+    private void safeHtmlDirectionMenu(){
+        sheet("اتجاه النص",
+                new Action("RTL — من اليمين لليسار",()->apply(SafeHtmlEditorTools.direction(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),"rtl")),false),
+                new Action("LTR — من اليسار لليمين",()->apply(SafeHtmlEditorTools.direction(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),"ltr")),false),
+                new Action("Auto — تلقائي",()->apply(SafeHtmlEditorTools.direction(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),"auto")),false),
+                new Action("إلغاء",null,false));
+    }
+
+    private void applyHtmlColor(boolean background,String color){
+        if(background)apply(SafeHtmlEditorTools.backgroundColor(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),color));
+        else apply(SafeHtmlEditorTools.textColor(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),color));
+    }
+
+    private void customHtmlColor(boolean background){
+        if(!editing)setEditing(true);
+        Dialog d=dialog();LinearLayout p=panel(background?"لون خلفية مخصص":"لون نص مخصص");
+        p.addView(label("اكتب اللون بصيغة HEX مثل #0969DA أو #FFF8C5. يتم التحقق منه قبل الإدراج، ثم تعيد طبقة HTML الآمنة فحصه عند المعاينة.",13,muted,false),textLp());
+        EditText value=inputField("#RRGGBB","",false);value.setSingleLine(true);p.addView(value,textLp());
+        TextView add=sheetButton("إدراج اللون",false),close=sheetButton("إلغاء",false);
+        add.setOnClickListener(v->{String color=value.getText().toString().trim();if(!SafeHtmlEditorTools.isSafeColor(color)){value.setError("استخدم لون HEX صحيحًا مثل #0969DA");return;}dismissSheet(d,p,()->applyHtmlColor(background,color));});
+        close.setOnClickListener(v->dismissSheet(d,p,null));p.addView(add,buttonLp());p.addView(close,buttonLp());showDialog(d,p,false);value.requestFocus();keyboard(value);
     }
 
     private void insertMarkdownBlock(String block){
@@ -557,7 +631,7 @@ public class MainActivity extends Activity {
     private void outline(){List<OutlineParser.Heading> hs=OutlineParser.parse(txt());if(hs.isEmpty()){Toast.makeText(this,"لا توجد عناوين في الملف",Toast.LENGTH_SHORT).show();return;}Dialog d=dialog();LinearLayout p=panel("فهرس المستند");ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);sc.addView(list);for(int i=0;i<hs.size();i++){int idx=i;OutlineParser.Heading h=hs.get(i);TextView r=sheetButton(repeat("   ",Math.max(0,h.level-1))+h.title,false);r.setOnClickListener(v->dismissSheet(d,p,()->{if(editing){jumpEditorOffset(Math.min(h.offset,editor.length()));}else preview.evaluateJavascript("window.scrollToHeading("+idx+");",null);}));list.addView(r,buttonLp());}p.addView(sc,new LinearLayout.LayoutParams(-1,0,1));TextView close=sheetButton("إغلاق",false);close.setOnClickListener(v->dismissSheet(d,p,null));p.addView(close,buttonLp());showDialog(d,p,true);}
     private void pdf(){if(homeMode)return;render();if(editing)setEditing(false);preview.postDelayed(()->{try{PrintManager pm=(PrintManager)getSystemService(Context.PRINT_SERVICE);PrintDocumentAdapter a=preview.createPrintDocumentAdapter(stripMd(currentName));pm.print(stripMd(currentName),a,null);}catch(Exception e){error("تعذر بدء التصدير",e);}},650);}
     private void share(){if(homeMode)return;if(currentUri==null||dirty){save(this::share);return;}Intent i=new Intent(Intent.ACTION_SEND);i.setType("text/markdown");i.putExtra(Intent.EXTRA_STREAM,currentUri);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);try{startActivity(Intent.createChooser(i,"مشاركة الملف"));}catch(Exception e){error("تعذر مشاركة الملف",e);}}
-    private void about(){message("MD Reader 0.10.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، مربعات الاختيار والإجابات الصحيحة المظللة، أدوات مباشرة لتحديد الإجابة الصحيحة وتوحيد مربعات الاختيار، معاينة محسنة للملفات الكبيرة، تنزيل ملفات Markdown العامة مباشرة من GitHub، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
+    private void about(){message("MD Reader 0.11.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، طبقة HTML آمنة ومفلترة مع أدوات جاهزة للتظليل والألوان والمحاذاة والتفاصيل، مربعات الاختيار والإجابات الصحيحة المظللة، أدوات مباشرة لتحديد الإجابة الصحيحة وتوحيد مربعات الاختيار، معاينة محسنة للملفات الكبيرة، تنزيل ملفات Markdown العامة مباشرة من GitHub، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
 
     private void speechMenu(){
         List<Action>a=new ArrayList<>();

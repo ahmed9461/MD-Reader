@@ -5,8 +5,9 @@
 ## 1) الحالة الحالية
 - الاسم: **MD Reader**.
 - الحزمة الثابتة: `app.mdreader.mobile`.
-- الإصدار المستقر المعتمد: **v0.10.0**.
-- `versionCode`: **13**.
+- الإصدار المستقر المعتمد على `main`: **v0.10.0**.
+- `versionCode`: **13** على `main`.
+- المرشح **v0.11.0 / versionCode 14** على الفرع `feature/safe-html-layer-tools` اجتاز CI واختبار الهاتف، وأعطى المستخدم موافقة صريحة على اعتماده ودمجه في 2026-09-18.
 - Android: minSdk 26، compile/targetSdk 36.
 - الواجهة: عربية RTL مع دعم الإنجليزية LTR.
 - الحالة: **Stable / معتمد بعد CI ناجح واختبار فعلي على هاتف المستخدم**.
@@ -197,3 +198,22 @@
 9. اختبار أي UX حساس للمس/الكيبورد/التنزيل على جهاز فعلي.
 10. تحديث هذا الملف قبل اعتماد أي إصدار جديد.
 11. لا دمج إلى `main` بدون موافقة المستخدم الصريحة.
+
+## 13) v0.11.0 Candidate — Safe HTML Layer + Editor Tools
+- سبب الإصدار: v0.10.0 أبقى `html:false` وحل task-list فقط؛ المستخدم طلب دعم HTML عامًا بشكل معماري وليس حلولًا مخصصة لكل وسم.
+- الفرع: `feature/safe-html-layer-tools`.
+- الإصدار المرشح: `versionName 0.11.0` / `versionCode 14`.
+- `markdown-it` أصبح `html:true` لكن **لا يتم إدخال الناتج إلى DOM مباشرة**. يمر HTML كاملًا عبر DOMPurify محلي مضمّن داخل APK ثم عبر سياسة `mdreader-safe-html.js`.
+- السياسة Allowlist وليست blocklist فقط: تسمح بعناصر تنسيق شائعة وآمنة مثل `mark`, `span`, `u`, `sub`, `sup`, `kbd`, `small`, `details/summary`, الجداول، القوائم، العناوين، الروابط والصور.
+- العناصر الخطرة محظورة صراحة: `script`, `style`, `iframe`, `object`, `embed`, `form`, حقول الإدخال، `svg/math`, الوسائط و`canvas`. Event handlers لا يسمح بها DOMPurify.
+- `style` لا يمر كما هو: تتم إعادة بنائه من خصائص محددة فقط (`color`, `background-color`, `text-align`, `font-weight`, `font-style`, `text-decoration`, `font-size`, `display`) مع تحقق للقيم ومنع `url()`, `expression()` و`javascript:`.
+- `class` يقتصر على أصناف لغة كتل الكود (`language-*` / `lang-*`) للمحافظة على syntax highlighting دون فتح تنسيقات عشوائية.
+- أضيف CSP داخل `reader.html` كطبقة دفاع إضافية: لا frames/objects/forms/connect، والسكربتات محلية فقط.
+- DOMPurify يتم جلبه بإصدار ثابت `3.2.6` أثناء البناء ويعمل محليًا داخل التطبيق؛ لا تعتمد المعاينة على CDN وقت التشغيل.
+- أدوات التحرير الجديدة داخل **HTML آمن**: تظليل، تسطير، لون نص، لون خلفية، محاذاة، RTL/LTR/Auto، نص علوي وسفلي، kbd، small، details، و`<br>`.
+- ألوان مخصصة تقبل HEX فقط من الواجهة، وتخضع لفحص Java عند الإدراج ثم لفحص sanitizer مرة ثانية عند المعاينة.
+- أضيف `SafeHtmlEditorTools.java` كطبقة تحويل Pure Java واختبار smoke مستقل بدل حشر منطق HTML داخل `MainActivity`.
+- GitHub Actions Run #87 (`35278414146`) انتهى **Success**: فحوص المعمارية وJava/JavaScript وسياسة HTML الآمنة وملفات Markdown الكبيرة وبناء APK/AAB وفحص ABI ورفع Artifact.
+- تم توقيع APK المرشح بنفس مفتاح Release الدائم، وتثبيته كتحديث فوق v0.10.0 على هاتف المستخدم بنجاح.
+- اختبار الهاتف في 2026-09-18: المستخدم أكد أن النسخة **ممتازة جدًا حاليًا** وأن طبقة HTML والأدوات تعمل كما يريد، ثم أعطى موافقة صريحة على الدمج.
+- قرار الاعتماد: **v0.11.0 معتمد للدمج إلى `main` عبر PR #6**.
