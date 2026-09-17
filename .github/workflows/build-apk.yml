@@ -273,6 +273,8 @@ jobs:
             dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk
             dist/SHA256SUMS.txt
             dist/release-info.txt
+            dist/signing-tools/apksigner
+            dist/signing-tools/lib/apksigner.jar
           if-no-files-found: error
           retention-days: 2
           compression-level: 0
