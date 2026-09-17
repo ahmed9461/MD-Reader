@@ -23,10 +23,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/one_time_v011_integrate.py
-          git rm tools/one_time_v011_integrate.py
-          git rm .github/workflows/one-time-v011-safe-html.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app tools PROJECT_MEMORY.md .github/workflows/build-apk.yml
+          git add app/build.gradle app/src/main/assets/reader.html app/src/main/assets/js/mdreader-safe-html.js app/src/main/java/app/mdreader/mobile/MainActivity.java app/src/main/java/app/mdreader/mobile/SafeHtmlEditorTools.java tools/fetch-vendor-assets.sh tools/SafeHtmlEditorToolsSmokeTest.java PROJECT_MEMORY.md
           git commit -m 'Add safe HTML rendering layer and editor tools'
           git push origin HEAD:feature/safe-html-layer-tools
