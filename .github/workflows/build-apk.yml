@@ -1,4 +1,4 @@
-name: Build MD Reader v0.11.0 Release
+name: Build MD Reader v0.12.0 Release
 
 on:
   workflow_dispatch:
@@ -37,6 +37,7 @@ jobs:
           test -s app/src/main/java/app/mdreader/mobile/GitHubMarkdownSource.java
           test -s app/src/main/java/app/mdreader/mobile/SafeHtmlEditorTools.java
           test -s app/src/main/assets/js/mdreader-safe-html.js
+          test -s app/src/main/assets/js/mdreader-code-fence.js
           test -s app/src/main/res/drawable-nodpi/ic_launcher_art.webp
           ! test -e tools/one_time_v011_integrate.py
           ! test -e .github/workflows/one-time-v011-safe-html.yml
@@ -44,7 +45,7 @@ jobs:
           ! grep -q 'v0.5-mainactivity.patch' .github/workflows/build-apk.yml
           ! grep -q 'AdjustableScroller' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q "versionName '0.11.0'" app/build.gradle
-          grep -q "versionCode 14" app/build.gradle
+          grep -q "versionCode 15" app/build.gradle
           grep -q 'new FlingEditText(this)' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'setFlingSpeedPercent' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'boolean scrollable=aa!=null&&aa.length>7' app/src/main/java/app/mdreader/mobile/MainActivity.java
@@ -63,6 +64,8 @@ jobs:
           grep -q 'MD Reader 0.11.0' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'html:true' app/src/main/assets/reader.html
           grep -q 'MDReaderSafeHtml.sanitize' app/src/main/assets/reader.html
+          grep -q 'MDReaderCodeFence.parseInfo' app/src/main/assets/reader.html
+          grep -q 'code-header' app/src/main/assets/reader.html
           grep -q 'Content-Security-Policy' app/src/main/assets/reader.html
           grep -q 'dompurify@3.2.6' tools/fetch-vendor-assets.sh
           grep -q 'normalizeTaskSyntax' app/src/main/assets/reader.html
@@ -131,6 +134,8 @@ jobs:
           set -euo pipefail
           test -s app/src/main/assets/js/purify.min.js
           node --check app/src/main/assets/js/mdreader-safe-html.js
+          node --check app/src/main/assets/js/mdreader-code-fence.js
+          node tools/code-fence-meta-smoke-test.js
           python3 - <<'PY'
           from pathlib import Path
           s = Path('app/src/main/assets/reader.html').read_text()
@@ -193,7 +198,7 @@ jobs:
             find app/build/outputs/apk -type f -print || true
             exit 1
           fi
-          cp "$ARM64_APK" dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk
+          cp "$ARM64_APK" dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk
 
       - name: Build optimized App Bundle separately
         shell: bash
@@ -207,23 +212,24 @@ jobs:
             find app/build/outputs/bundle -type f -print || true
             exit 1
           fi
-          cp "$AAB" dist/MD-Reader-v0.11.0-release-unsigned.aab
+          cp "$AAB" dist/MD-Reader-v0.12.0-release-unsigned.aab
 
       - name: Verify optimized outputs
         shell: bash
         run: |
           set -euo pipefail
-          test -s dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk
-          test -s dist/MD-Reader-v0.11.0-release-unsigned.aab
-          unzip -l dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk > /tmp/apk-list.txt
+          test -s dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk
+          test -s dist/MD-Reader-v0.12.0-release-unsigned.aab
+          unzip -l dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk > /tmp/apk-list.txt
           grep -q 'lib/arm64-v8a/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86_64/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/armeabi-v7a/libtranslate_jni.so' /tmp/apk-list.txt
           grep -q 'assets/js/purify.min.js' /tmp/apk-list.txt
           grep -q 'assets/js/mdreader-safe-html.js' /tmp/apk-list.txt
+          grep -q 'assets/js/mdreader-code-fence.js' /tmp/apk-list.txt
           grep -q 'assets/reader.html' /tmp/apk-list.txt
-          unzip -l dist/MD-Reader-v0.11.0-release-unsigned.aab > /tmp/aab-list.txt
+          unzip -l dist/MD-Reader-v0.12.0-release-unsigned.aab > /tmp/aab-list.txt
           grep -q 'base/lib/arm64-v8a/libtranslate_jni.so' /tmp/aab-list.txt
           grep -q 'base/lib/armeabi-v7a/libtranslate_jni.so' /tmp/aab-list.txt
           mkdir -p dist/signing-tools/lib
@@ -234,12 +240,13 @@ jobs:
           {
             echo "version=0.11.0"
             echo "versionCode=14"
-            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk)"
-            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.11.0-release-unsigned.aab)"
+            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk)"
+            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.12.0-release-unsigned.aab)"
             echo "minified=true"
             echo "resources_shrunk=true"
             echo "apk_abi=arm64-v8a"
             echo "safe_html=dompurify+allowlist+csp"
+            echo "code_block_titles=true"
             echo "signed=false"
           } > dist/release-info.txt
           cat dist/release-info.txt
@@ -268,9 +275,9 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: MD-Reader-v0.11.0-arm64-unsigned
+          name: MD-Reader-v0.12.0-arm64-unsigned
           path: |
-            dist/MD-Reader-v0.11.0-arm64-release-unsigned.apk
+            dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk
             dist/SHA256SUMS.txt
             dist/release-info.txt
             dist/signing-tools/apksigner
