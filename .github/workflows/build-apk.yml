@@ -27,7 +27,7 @@ jobs:
       - name: Checkout normalized source
         uses: actions/checkout@v4
 
-      - name: Assert direct-source architecture and v0.11 features
+      - name: Assert direct-source architecture and v0.12 features
         shell: bash
         run: |
           set -euo pipefail
@@ -44,7 +44,7 @@ jobs:
           ! grep -q 'apply_editor_ux_v07.py' .github/workflows/build-apk.yml
           ! grep -q 'v0.5-mainactivity.patch' .github/workflows/build-apk.yml
           ! grep -q 'AdjustableScroller' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q "versionName '0.11.0'" app/build.gradle
+          grep -q "versionName '0.12.0'" app/build.gradle
           grep -q "versionCode 15" app/build.gradle
           grep -q 'new FlingEditText(this)' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'setFlingSpeedPercent' app/src/main/java/app/mdreader/mobile/MainActivity.java
@@ -61,7 +61,7 @@ jobs:
           grep -q 'previewIo=Executors.newSingleThreadExecutor' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'safeHtmlTools' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'customHtmlColor' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'MD Reader 0.11.0' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'MD Reader 0.12.0' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'html:true' app/src/main/assets/reader.html
           grep -q 'MDReaderSafeHtml.sanitize' app/src/main/assets/reader.html
           grep -q 'MDReaderCodeFence.parseInfo' app/src/main/assets/reader.html
@@ -238,7 +238,7 @@ jobs:
           chmod +x dist/signing-tools/apksigner
           sha256sum dist/*.apk dist/*.aab > dist/SHA256SUMS.txt
           {
-            echo "version=0.11.0"
+            echo "version=0.12.0"
             echo "versionCode=14"
             echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk)"
             echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.12.0-release-unsigned.aab)"
