@@ -29,12 +29,18 @@
     const raw=String(info||'').trim();
     if(!raw)return {language:'',title:''};
 
-    const titleMatch=raw.match(/(?:^|\s)title\s*=\s*(?:"([^"\r\n]*)"|'([^'\r\n]*)'|([^\s{}]+))/i);
+    const titleStart=raw.match(/(?:^|\s)title\s*=\s*/i);
     let explicitTitle='';
-    if(titleMatch){
-      if(titleMatch[1]!==undefined)explicitTitle=titleMatch[1];
-      else if(titleMatch[2]!==undefined)explicitTitle=titleMatch[2];
-      else explicitTitle=titleMatch[3]||'';
+    if(titleStart){
+      const rest=raw.slice(titleStart.index+titleStart[0].length);
+      const quote=rest.charAt(0);
+      if(quote==='"'||quote==="'"){
+        const end=rest.indexOf(quote,1);
+        if(end>0&&!/[\r\n]/.test(rest.slice(1,end)))explicitTitle=rest.slice(1,end);
+      }else{
+        const plain=rest.match(/^([^\s{}]+)/);
+        if(plain)explicitTitle=plain[1];
+      }
     }
 
     let first=(raw.split(/\s+/)[0]||'').trim();
