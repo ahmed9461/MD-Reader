@@ -66,3 +66,7 @@ print("Hello")
 ~~~
 
 Ordinary fences such as ```python remain fully supported and render without a title.
+
+### Editor shortcut
+
+Inside **أدوات Markdown وHTML**, use **▣ حاوية بعنوان…**. The dialog accepts an Arabic or English title plus an optional syntax-highlighting language such as `python`, `json`, or `text`. If text is selected, MD Reader wraps that selection; otherwise it inserts a ready-to-edit placeholder.
