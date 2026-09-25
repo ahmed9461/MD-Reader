@@ -33,6 +33,60 @@ public final class MarkdownTransforms {
         return replace(text, r.start, r.end, replacement, r.start + 4, r.start + 4 + body.length());
     }
 
+    public static Result titledFencedCode(String text, int start, int end, String title, String language) {
+        Range r = range(text, start, end);
+        String safeTitle = normalizeCodeTitle(title);
+        if (safeTitle.isEmpty()) throw new IllegalArgumentException("Title is required");
+        String safeLanguage = normalizeCodeLanguage(language);
+        String selected = text.substring(r.start, r.end);
+        String body = selected.isEmpty() ? "المحتوى" : selected;
+        String fence = repeat("`", Math.max(3, longestBacktickRun(body) + 1));
+        String before = r.start > 0 && text.charAt(r.start - 1) != '\n' ? "\n\n" : "";
+        String after = r.end < text.length() && text.charAt(r.end) != '\n' ? "\n\n" : "";
+        String info = (safeLanguage.isEmpty() ? "" : safeLanguage + " ") + "title=\"" + escapeCodeTitle(safeTitle) + "\"";
+        String open = fence + info + "\n";
+        String close = (body.endsWith("\n") ? "" : "\n") + fence;
+        String replacement = before + open + body + close + after;
+        int bodyStart = r.start + before.length() + open.length();
+        return replace(text, r.start, r.end, replacement, bodyStart, bodyStart + body.length());
+    }
+
+    public static String normalizeCodeTitle(String value) {
+        if (value == null) return "";
+        StringBuilder out = new StringBuilder();
+        boolean space = false;
+        for (int i = 0; i < value.length() && out.length() < 160; i++) {
+            char c = value.charAt(i);
+            if (Character.isISOControl(c) || Character.isWhitespace(c)) {
+                if (!space && out.length() > 0) { out.append(' '); space = true; }
+            } else { out.append(c); space = false; }
+        }
+        int end = out.length();
+        while (end > 0 && out.charAt(end - 1) == ' ') end--;
+        return out.substring(0, end);
+    }
+
+    public static String normalizeCodeLanguage(String value) {
+        if (value == null) return "";
+        String v = value.trim();
+        if (v.isEmpty()) return "";
+        if (v.length() > 40 || !v.matches("[A-Za-z0-9_+.-]+")) throw new IllegalArgumentException("Unsupported language");
+        return v;
+    }
+
+    private static String escapeCodeTitle(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private static int longestBacktickRun(String value) {
+        int best = 0, current = 0;
+        for (int i = 0; i < value.length(); i++) {
+            if (value.charAt(i) == '`') { current++; if (current > best) best = current; }
+            else current = 0;
+        }
+        return best;
+    }
+
     public static Result link(String text, int start, int end, boolean image) {
         Range r = range(text, start, end);
         String selected = text.substring(r.start, r.end);
