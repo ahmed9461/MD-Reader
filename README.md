@@ -2,7 +2,7 @@
 
 Android Markdown reader and editor focused on correct Arabic RTL and English LTR rendering.
 
-## Current stable release — v0.11.0
+## Current stable release — v0.12.0
 
 - Open, read, edit, save and Save As for Markdown files.
 - Per-block bidirectional rendering: Arabic RTL, English LTR, code always LTR.
@@ -38,16 +38,15 @@ GitHub Actions validates the direct-source architecture, smoke tests, JavaScript
 ## Release identity
 
 - applicationId: `app.mdreader.mobile`
-- stable versionName: `0.11.0`
-- stable versionCode: `14`
-- current feature candidate: `0.12.0` / versionCode `15`
+- stable versionName: `0.12.0`
+- stable versionCode: `15`
 - minSdk: 26
 - compile/target SDK: 36
 
 Release signing credentials are never committed to the repository. Future updates must keep the same applicationId and permanent signing key and increment versionCode.
 
 
-## Named fenced code blocks — v0.12.0 candidate
+## Named fenced code blocks — v0.12.0
 
 MD Reader can show an optional filename/title in the header of a fenced code block while preserving syntax highlighting and the copy button.
 
