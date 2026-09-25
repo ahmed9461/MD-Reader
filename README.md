@@ -2,7 +2,7 @@
 
 Android Markdown reader and editor focused on correct Arabic RTL and English LTR rendering.
 
-## Current test release — v0.8.1
+## Current stable release — v0.11.0
 
 - Open, read, edit, save and Save As for Markdown files.
 - Per-block bidirectional rendering: Arabic RTL, English LTR, code always LTR.
@@ -33,14 +33,40 @@ See `PROJECT_MEMORY.md` for the project source of truth, implementation decision
 
 ## Release build
 
-GitHub Actions workflow `Build MD Reader v0.8.1 Release` validates the direct-source architecture and v0.8.1 editor/dialog fixes, runs smoke tests and JavaScript syntax checks, builds optimized ARM64 APK and AAB outputs, verifies ABI contents, and uploads the unsigned release package for signing with the permanent release key.
+GitHub Actions validates the direct-source architecture, smoke tests, JavaScript syntax and renderer safety, then builds optimized ARM64 APK and AAB outputs, verifies ABI contents, and uploads the unsigned ARM64 test package for signing with the permanent release key.
 
 ## Release identity
 
 - applicationId: `app.mdreader.mobile`
-- versionName: `0.8.1`
-- versionCode: `11`
+- stable versionName: `0.11.0`
+- stable versionCode: `14`
+- current feature candidate: `0.12.0` / versionCode `15`
 - minSdk: 26
 - compile/target SDK: 36
 
 Release signing credentials are never committed to the repository. Future updates must keep the same applicationId and permanent signing key and increment versionCode.
+
+
+## Named fenced code blocks — v0.12.0 candidate
+
+MD Reader can show an optional filename/title in the header of a fenced code block while preserving syntax highlighting and the copy button.
+
+~~~markdown
+```python title="app.py"
+print("Hello")
+```
+~~~
+
+A compact shorthand is also supported:
+
+~~~markdown
+```python:app.py
+print("Hello")
+```
+~~~
+
+Ordinary fences such as ```python remain fully supported and render without a title.
+
+### Editor shortcut
+
+Inside **أدوات Markdown وHTML**, use **▣ حاوية بعنوان…**. The dialog accepts an Arabic or English title plus an optional syntax-highlighting language such as `python`, `json`, or `text`. If text is selected, MD Reader wraps that selection; otherwise it inserts a ready-to-edit placeholder.

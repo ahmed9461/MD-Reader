@@ -309,9 +309,33 @@ public class MainActivity extends Activity {
                 new Action("☑ قائمة مهام",this::insertTaskList,false),
                 new Action("🧹 توحيد مربعات الاختيار",this::normalizeTaskMarkers,false),
                 new Action("◇ HTML آمن",this::safeHtmlTools,false),
+                new Action("▣ حاوية بعنوان…",this::titledCodeBlockTool,false),
                 new Action("▦ جدول",()->insertMarkdownBlock("| العمود 1 | العمود 2 |"+System.lineSeparator()+"| --- | --- |"+System.lineSeparator()+"| قيمة | قيمة |"),false),
                 new Action("— فاصل أفقي",()->insertMarkdownBlock("---"),false),
                 new Action("إلغاء",null,false));
+    }
+
+    private void titledCodeBlockTool(){
+        if(!editing)setEditing(true);
+        Dialog d=dialog();LinearLayout p=panel("حاوية بعنوان");
+        p.addView(label("اكتب اسم الحاوية. يمكنك استخدام العربية أو الإنجليزية. لغة التلوين اختيارية مثل python أو json؛ اتركها فارغة إذا كانت الحاوية للنص العادي.",13,muted,false),textLp());
+        EditText title=inputField("اسم الحاوية","",false);title.setSingleLine(true);p.addView(title,textLp());
+        EditText language=inputField("لغة التلوين — اختياري","",false);language.setSingleLine(true);p.addView(language,textLp());
+        TextView add=sheetButton("إدراج الحاوية",false),close=sheetButton("إلغاء",false);
+        add.setOnClickListener(v->{
+            String name=title.getText().toString();
+            String lang=language.getText().toString();
+            if(MarkdownTransforms.normalizeCodeTitle(name).isEmpty()){title.setError("اكتب اسم الحاوية");return;}
+            try{
+                MarkdownTransforms.normalizeCodeLanguage(lang);
+            }catch(IllegalArgumentException e){
+                language.setError("استخدم اسم لغة مثل python أو json أو اتركه فارغًا");
+                return;
+            }
+            dismissSheet(d,p,()->apply(MarkdownTransforms.titledFencedCode(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),name,lang)));
+        });
+        close.setOnClickListener(v->dismissSheet(d,p,null));
+        p.addView(add,buttonLp());p.addView(close,buttonLp());showDialog(d,p,false);title.requestFocus();keyboard(title);
     }
 
     private void safeHtmlTools(){
@@ -631,7 +655,7 @@ public class MainActivity extends Activity {
     private void outline(){List<OutlineParser.Heading> hs=OutlineParser.parse(txt());if(hs.isEmpty()){Toast.makeText(this,"لا توجد عناوين في الملف",Toast.LENGTH_SHORT).show();return;}Dialog d=dialog();LinearLayout p=panel("فهرس المستند");ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);sc.addView(list);for(int i=0;i<hs.size();i++){int idx=i;OutlineParser.Heading h=hs.get(i);TextView r=sheetButton(repeat("   ",Math.max(0,h.level-1))+h.title,false);r.setOnClickListener(v->dismissSheet(d,p,()->{if(editing){jumpEditorOffset(Math.min(h.offset,editor.length()));}else preview.evaluateJavascript("window.scrollToHeading("+idx+");",null);}));list.addView(r,buttonLp());}p.addView(sc,new LinearLayout.LayoutParams(-1,0,1));TextView close=sheetButton("إغلاق",false);close.setOnClickListener(v->dismissSheet(d,p,null));p.addView(close,buttonLp());showDialog(d,p,true);}
     private void pdf(){if(homeMode)return;render();if(editing)setEditing(false);preview.postDelayed(()->{try{PrintManager pm=(PrintManager)getSystemService(Context.PRINT_SERVICE);PrintDocumentAdapter a=preview.createPrintDocumentAdapter(stripMd(currentName));pm.print(stripMd(currentName),a,null);}catch(Exception e){error("تعذر بدء التصدير",e);}},650);}
     private void share(){if(homeMode)return;if(currentUri==null||dirty){save(this::share);return;}Intent i=new Intent(Intent.ACTION_SEND);i.setType("text/markdown");i.putExtra(Intent.EXTRA_STREAM,currentUri);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);try{startActivity(Intent.createChooser(i,"مشاركة الملف"));}catch(Exception e){error("تعذر مشاركة الملف",e);}}
-    private void about(){message("MD Reader 0.11.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، طبقة HTML آمنة ومفلترة مع أدوات جاهزة للتظليل والألوان والمحاذاة والتفاصيل، مربعات الاختيار والإجابات الصحيحة المظللة، أدوات مباشرة لتحديد الإجابة الصحيحة وتوحيد مربعات الاختيار، معاينة محسنة للملفات الكبيرة، تنزيل ملفات Markdown العامة مباشرة من GitHub، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
+    private void about(){message("MD Reader 0.12.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، عناوين مخصصة لحاويات الكود، طبقة HTML آمنة ومفلترة مع أدوات جاهزة للتظليل والألوان والمحاذاة والتفاصيل، مربعات الاختيار والإجابات الصحيحة المظللة، أدوات مباشرة لتحديد الإجابة الصحيحة وتوحيد مربعات الاختيار، معاينة محسنة للملفات الكبيرة، تنزيل ملفات Markdown العامة مباشرة من GitHub، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
 
     private void speechMenu(){
         List<Action>a=new ArrayList<>();

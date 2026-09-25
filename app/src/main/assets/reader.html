@@ -38,6 +38,10 @@ pre{margin:0;overflow:auto;background:var(--code);border:1px solid var(--border)
 pre code{padding:0;background:transparent;border-radius:0;white-space:pre;overflow-wrap:normal;direction:inherit;text-align:inherit}
 .copy-code{position:absolute;top:8px;right:8px;border:1px solid var(--border);background:var(--bg);color:var(--secondary);border-radius:7px;padding:5px 8px;font-size:12px;z-index:2}
 .code-shell[dir="rtl"] .copy-code{right:auto;left:8px}
+.code-shell.has-title pre{border-radius:0 0 9px 9px}
+.code-header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;padding:7px 9px;background:var(--code);border:1px solid var(--border);border-bottom:0;border-radius:9px 9px 0 0}
+.code-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--secondary);font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;font-size:12px;font-weight:600}
+.code-shell.has-title .copy-code{position:static;right:auto;left:auto;flex:0 0 auto}
 .table-wrap{width:100%;overflow-x:auto;margin:1em 0;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;min-width:100%;width:max-content;max-width:none}
 th,td{border:1px solid var(--border);padding:8px 12px;text-align:start;vertical-align:top;white-space:normal}
@@ -79,6 +83,7 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
 <script src="js/markdown-it.min.js"></script>
 <script src="js/highlight.min.js"></script>
 <script src="js/purify.min.js"></script>
+<script src="js/mdreader-code-fence.js"></script>
 <script src="js/mdreader-safe-html.js"></script>
 </head>
 <body data-theme="light"><main id="content"><div class="empty">افتح ملف Markdown للبدء</div></main>
@@ -106,6 +111,18 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
       return esc(str);
     }
   });
+
+  md.renderer.rules.fence=function(tokens,idx,options){
+    const token=tokens[idx];
+    const parsed=(window.MDReaderCodeFence&&typeof window.MDReaderCodeFence.parseInfo==='function')
+      ?window.MDReaderCodeFence.parseInfo(token.info)
+      :{language:String(token.info||'').trim().split(/\s+/)[0]||'',title:''};
+    const lang=parsed.language||'';
+    const classAttr=lang?' class="language-'+esc(lang)+'"':'';
+    const titleAttr=parsed.title?' title="'+esc(parsed.title)+'"':'';
+    const highlighted=options.highlight?options.highlight(token.content,lang):esc(token.content);
+    return '<pre><code'+classAttr+titleAttr+'>'+highlighted+'</code></pre>\n';
+  };
 
   function normalizeTaskSyntax(source){
     // Accept standard Markdown task syntax and common human variants:
@@ -214,10 +231,19 @@ pre[dir="rtl"],code[dir="rtl"]{direction:rtl;text-align:right;unicode-bidi:plain
       const code=pre.querySelector(':scope > code');
       if(code&&languageOfCode(code)==='mermaid')return;
       if(pre.closest('.code-shell'))return;
+      const title=code?(code.getAttribute('title')||'').trim():'';
+      if(code&&title)code.removeAttribute('title');
       const shell=document.createElement('div');shell.className='code-shell';shell.setAttribute('dir',pre.getAttribute('dir')||firstStrongDirection(pre.textContent));pre.parentNode.insertBefore(shell,pre);shell.appendChild(pre);
       const b=document.createElement('button');b.className='copy-code';b.type='button';b.textContent='نسخ';
       b.onclick=()=>{const value=pre.textContent||''; if(window.Android&&Android.copyText)Android.copyText(value); b.textContent='تم';setTimeout(()=>b.textContent='نسخ',900);};
-      shell.appendChild(b);
+      if(title){
+        shell.classList.add('has-title');
+        const header=document.createElement('div');header.className='code-header';header.setAttribute('dir','auto');
+        const label=document.createElement('span');label.className='code-title';label.setAttribute('dir','auto');label.textContent=title;
+        header.appendChild(label);header.appendChild(b);shell.insertBefore(header,pre);
+      }else{
+        shell.appendChild(b);
+      }
     });
   }
 

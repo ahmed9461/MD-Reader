@@ -20,6 +20,19 @@ public class TransformSmokeTest {
         MarkdownTransforms.Result l = MarkdownTransforms.link("OpenAI", 0, 6, false);
         eq(l.text, "[OpenAI](https://)", "link selection");
 
+        MarkdownTransforms.Result titled = MarkdownTransforms.titledFencedCode("print(1)", 0, 8, "ملف التطبيق", "python");
+        eq(titled.text, "```python title=\"ملف التطبيق\"\nprint(1)\n```", "titled code block Arabic name");
+        eq(titled.text.substring(titled.selectionStart,titled.selectionEnd), "print(1)", "titled block selection");
+
+        MarkdownTransforms.Result plainBox = MarkdownTransforms.titledFencedCode("", 0, 0, "طالب 1", "");
+        eq(plainBox.text, "```title=\"طالب 1\"\nالمحتوى\n```", "titled plain container");
+
+        MarkdownTransforms.Result nestedFence = MarkdownTransforms.titledFencedCode("```", 0, 3, "مثال", "");
+        if(!nestedFence.text.startsWith("````title=")) throw new AssertionError("titled fence must expand around nested backticks");
+
+        MarkdownTransforms.Result quotedTitle = MarkdownTransforms.titledFencedCode("x",0,1,"شرح \"المثال\"","");
+        if(!quotedTitle.text.contains("title=\"شرح \\\"المثال\\\"\"")) throw new AssertionError("title quotes escaping");
+
         List<OutlineParser.Heading> outline = OutlineParser.parse("# عربي\n\n```md\n# ليس عنوان\n```\n\n## English");
         if (outline.size() != 2 || !outline.get(0).title.equals("عربي") || !outline.get(1).title.equals("English")) {
             throw new AssertionError("outline parser");
