@@ -8,6 +8,14 @@ assert.deepStrictEqual(
   {language:'python',title:'app.py'}
 );
 assert.deepStrictEqual(
+  meta.parseInfo('title="طالب 1"'),
+  {language:'',title:'طالب 1'}
+);
+assert.deepStrictEqual(
+  meta.parseInfo('text title="شرح \\"المثال الأول\\""'),
+  {language:'text',title:'شرح "المثال الأول"'}
+);
+assert.deepStrictEqual(
   meta.parseInfo("javascript title='main file.js'"),
   {language:'javascript',title:'main file.js'}
 );
