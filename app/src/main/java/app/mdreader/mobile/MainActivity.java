@@ -309,9 +309,33 @@ public class MainActivity extends Activity {
                 new Action("☑ قائمة مهام",this::insertTaskList,false),
                 new Action("🧹 توحيد مربعات الاختيار",this::normalizeTaskMarkers,false),
                 new Action("◇ HTML آمن",this::safeHtmlTools,false),
+                new Action("▣ حاوية بعنوان…",this::titledCodeBlockTool,false),
                 new Action("▦ جدول",()->insertMarkdownBlock("| العمود 1 | العمود 2 |"+System.lineSeparator()+"| --- | --- |"+System.lineSeparator()+"| قيمة | قيمة |"),false),
                 new Action("— فاصل أفقي",()->insertMarkdownBlock("---"),false),
                 new Action("إلغاء",null,false));
+    }
+
+    private void titledCodeBlockTool(){
+        if(!editing)setEditing(true);
+        Dialog d=dialog();LinearLayout p=panel("حاوية بعنوان");
+        p.addView(label("اكتب اسم الحاوية. يمكنك استخدام العربية أو الإنجليزية. لغة التلوين اختيارية مثل python أو json؛ اتركها فارغة إذا كانت الحاوية للنص العادي.",13,muted,false),textLp());
+        EditText title=inputField("اسم الحاوية","",false);title.setSingleLine(true);p.addView(title,textLp());
+        EditText language=inputField("لغة التلوين — اختياري","",false);language.setSingleLine(true);p.addView(language,textLp());
+        TextView add=sheetButton("إدراج الحاوية",false),close=sheetButton("إلغاء",false);
+        add.setOnClickListener(v->{
+            String name=title.getText().toString();
+            String lang=language.getText().toString();
+            if(MarkdownTransforms.normalizeCodeTitle(name).isEmpty()){title.setError("اكتب اسم الحاوية");return;}
+            try{
+                MarkdownTransforms.normalizeCodeLanguage(lang);
+            }catch(IllegalArgumentException e){
+                language.setError("استخدم اسم لغة مثل python أو json أو اتركه فارغًا");
+                return;
+            }
+            dismissSheet(d,p,()->apply(MarkdownTransforms.titledFencedCode(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),name,lang)));
+        });
+        close.setOnClickListener(v->dismissSheet(d,p,null));
+        p.addView(add,buttonLp());p.addView(close,buttonLp());showDialog(d,p,false);title.requestFocus();keyboard(title);
     }
 
     private void safeHtmlTools(){
