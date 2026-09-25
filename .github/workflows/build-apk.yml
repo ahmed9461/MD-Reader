@@ -66,6 +66,9 @@ jobs:
           grep -q 'MDReaderSafeHtml.sanitize' app/src/main/assets/reader.html
           grep -q 'MDReaderCodeFence.parseInfo' app/src/main/assets/reader.html
           grep -q 'code-header' app/src/main/assets/reader.html
+          grep -q 'titledCodeBlockTool' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q '▣ حاوية بعنوان…' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'titledFencedCode' app/src/main/java/app/mdreader/mobile/MarkdownTransforms.java
           grep -q 'Content-Security-Policy' app/src/main/assets/reader.html
           grep -q 'dompurify@3.2.6' tools/fetch-vendor-assets.sh
           grep -q 'normalizeTaskSyntax' app/src/main/assets/reader.html
