@@ -35,8 +35,16 @@
       const rest=raw.slice(titleStart.index+titleStart[0].length);
       const quote=rest.charAt(0);
       if(quote==='"'||quote==="'"){
-        const end=rest.indexOf(quote,1);
-        if(end>0&&!/[\r\n]/.test(rest.slice(1,end)))explicitTitle=rest.slice(1,end);
+        let out='';let escaped=false;let closed=false;
+        for(let i=1;i<rest.length;i++){
+          const ch=rest.charAt(i);
+          if(ch==='\r'||ch==='\n')break;
+          if(escaped){out+=ch;escaped=false;continue;}
+          if(ch==='\\'){escaped=true;continue;}
+          if(ch===quote){closed=true;break;}
+          out+=ch;
+        }
+        if(closed)explicitTitle=out;
       }else{
         const plain=rest.match(/^([^\s{}]+)/);
         if(plain)explicitTitle=plain[1];
