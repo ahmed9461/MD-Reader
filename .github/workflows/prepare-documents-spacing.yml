@@ -1,0 +1,105 @@
+name: Prepare documents spacing source update
+on:
+  push:
+    branches: ['feature/ui-ux-refresh']
+    paths: ['.github/workflows/prepare-documents-spacing.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare narrowly scoped source blobs without moving any branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess, urllib.request
+          from pathlib import Path
+          changed = []
+          def replace(path, old, new, expected=1):
+              p=Path(path); text=p.read_text(encoding='utf-8')
+              assert text.count(old)==expected, (path, old, text.count(old))
+              p.write_text(text.replace(old,new),encoding='utf-8')
+              if path not in changed: changed.append(path)
+          main='app/src/main/java/app/mdreader/mobile/MainActivity.java'
+          replace(main,
+              '            if(homePage==1){TextView open=homeButton("فتح ملف من الجهاز",true);open.setOnClickListener(v->openPicker());homeContent.addView(open,buttonLp());}',
+              '''            if(homePage==1){
+                          TextView open=homeButton("فتح ملف من الجهاز",true);open.setOnClickListener(v->openPicker());
+                          // Separate the primary action from the list without changing shared card/button spacing.
+                          LinearLayout.LayoutParams openLp=buttonLp();openLp.bottomMargin=dp(16);
+                          homeContent.addView(open,openLp);
+                      }''')
+          p=Path(main); text=p.read_text(encoding='utf-8'); assert text.count('0.13.0')==2
+          p.write_text(text.replace('0.13.0','0.13.1'),encoding='utf-8')
+          replace('app/build.gradle',"versionName '0.13.0'","versionName '0.13.1'")
+          replace('app/build.gradle','versionCode 16','versionCode 17')
+          test='app/src/androidTest/java/app/mdreader/mobile/UiRegressionInstrumentation.java'
+          replace(test,
+              '});pause();shot("02-documents-light");\n            ui(()->{call("toggleTheme");call("switchHomePage",new Class[]{int.class},2);});pause();shot("03-favorites-dark");',
+              '''});pause();ui(()->assertDocumentsSpacing());shot("02-documents-light");
+                      ui(()->call("toggleTheme"));pause();ui(()->assertDocumentsSpacing());shot("02b-documents-dark");
+                      ui(()->call("switchHomePage",new Class[]{int.class},2));pause();shot("03-favorites-dark");''')
+          replace(test,'    private void waitForKeyboard() throws Exception {',
+              '''    private void assertDocumentsSpacing() throws Exception {
+                  android.widget.LinearLayout content=(android.widget.LinearLayout)field("homeContent");
+                  int index=-1;
+                  for(int i=0;i<content.getChildCount();i++){
+                      View child=content.getChildAt(i);
+                      if(child instanceof TextView&&"فتح ملف من الجهاز".contentEquals(((TextView)child).getText())){index=i;break;}
+                  }
+                  check(index>=0,"Documents open button exists");
+                  check(content.getChildCount()>index+2,"Documents regression has at least two file cards");
+                  View open=content.getChildAt(index),first=content.getChildAt(index+1),second=content.getChildAt(index+2);
+                  check(first.getTop()-open.getBottom()==dp(16),"16dp gap below Documents open button");
+                  check(second.getTop()-first.getBottom()==dp(9),"existing 9dp inter-card gap preserved");
+                  check(open.getLeft()==first.getLeft()&&open.getRight()==first.getRight(),"button and cards stay horizontally aligned");
+                  check(open.getHeight()>=dp(48),"Documents open action retains 48dp touch target");
+              }
+              private void waitForKeyboard() throws Exception {''')
+          workflow='.github/workflows/build-apk.yml'
+          p=Path(workflow); text=p.read_text(encoding='utf-8'); assert 'versionCode 16' in text and 'versionCode=16' in text
+          p.write_text(text.replace('0.13.0','0.13.1').replace('versionCode 16','versionCode 17').replace('versionCode=16','versionCode=17'),encoding='utf-8');changed.append(workflow)
+          plan='plans/0013-ui-ux-refresh.md'
+          for step in [
+              'Add a 16dp bottom margin specifically to the Documents open button.',
+              'Add real-layout regression checks for the gap, unchanged card spacing and 48dp touch target in light/dark Documents screens.',
+              'Increment delivered version to 0.13.1 / 17, keeping workflow assertions and visible version strings consistent.'
+          ]:
+              replace(plan,'- [ ] '+step,'- [x] '+step)
+          note='''## Current follow-up — v0.13.1 / versionCode 17
+
+          Owner tested v0.13.0, liked the redesign (9.5/10), and reported that the Documents open button touches the first file card. A focused code fix adds a 16dp bottom margin to that button only; shared 9dp card spacing and 48dp touch targets remain unchanged. Real-layout checks cover light and dark Documents screens. Visible version and release workflow expectations are updated together.
+
+          Work remains on `feature/ui-ux-refresh`, draft PR #9 and existing plan `plans/0013-ui-ux-refresh.md`. New release/device checks and permanent-key signing are pending; the old v0.13.0 evidence below does not validate this new source. main stays v0.12.0. No merge approval has been given. This task is an application correction, not an image generation request.
+
+          '''
+          replace('PROJECT_MEMORY.md','## الحالة الحالية — 2026-09-26',note+'## مرجع المرشح السابق v0.13.0 — 2026-09-26')
+          replace('PROJECT_MEMORY.md','انتظار ملاحظات المستخدم على النسخة الموقعة v0.13.0.','إكمال فحص وتوقيع وتسليم إصلاح المسافة v0.13.1 ثم انتظار تجربة المستخدم وموافقته الصريحة.')
+          log=Path('PROGRESS_LOG.md');text=log.read_text(encoding='utf-8');marker='## 2026-09-26 — v0.13.0 UI / UX candidate ready for phone testing'
+          entry='''## 2026-09-26 — v0.13.1 Documents spacing follow-up (validation pending)
+
+          - Owner likes v0.13.0 (9.5/10), but supplied a phone screenshot showing no separation between the open-file button and first document card.
+          - Root cause: the action layout has only a top margin, and the card layout only a bottom margin. Added a local 16dp bottom margin to the Documents action; no shared spacing, file data, navigation, icons, package or signing-key change.
+          - Added light/dark device checks for the actual 16dp boundary, unchanged 9dp inter-card spacing, aligned edges and 48dp button height.
+          - New candidate version 0.13.1 / 17. Release/device CI and permanent signing must be verified before delivery; no new success claimed here.
+          - Same draft PR #9 and existing plan. main unchanged; no merge approval.
+
+          '''
+          assert text.count(marker)==1;log.write_text(text.replace(marker,entry+marker),encoding='utf-8');changed.append(str(log))
+          subprocess.run(['git','diff','--check'],check=True)
+          base=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          tree=subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip()
+          entries=[]
+          for path in changed:
+              payload=json.dumps({'content':Path(path).read_text(encoding='utf-8'),'encoding':'utf-8'}).encode()
+              request=urllib.request.Request('https://api.github.com/repos/'+os.environ['REPOSITORY']+'/git/blobs',data=payload,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
+              with urllib.request.urlopen(request,timeout=30) as response: blob=json.load(response)
+              entries.append({'path':path,'mode':'100644','type':'blob','sha':blob['sha']})
+          print('PREPARED_SOURCE_BLOBS='+json.dumps({'parent':base,'base_tree':tree,'entries':entries},ensure_ascii=False))
+          print('No branch moved. Remove this temporary workflow in the final source tree before building.')
+          PY
