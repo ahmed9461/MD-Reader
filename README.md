@@ -1,54 +1,40 @@
 # MD Reader
 
-Android Markdown reader and editor focused on correct Arabic RTL and English LTR rendering.
+Native Android Markdown reader/editor with Arabic RTL and English LTR content support.
 
-## Current stable release — v0.12.0
+## UI refresh candidate — v0.13.0
 
-- Open, read, edit, save and Save As for Markdown files.
-- Per-block bidirectional rendering: Arabic RTL, English LTR, code always LTR.
-- Markdown formatting toolbar, undo/redo, search and document outline.
-- Tables, syntax highlighting and Mermaid diagrams.
-- Light/dark themes and adjustable reading font size.
-- Share and Android Print / Save as PDF.
-- Recent files, favorites, draft recovery, reading position and editor position restore.
-- Local ML Kit translation plus configured AI translation options.
-- Local speech and OpenAI TTS options.
-- Single Enter is rendered as a visible line break in preview.
-- Full literal Unicode search/replace with previous/next, replace current and replace all.
-- Quick navigation and bookmarks for long documents.
-- Kinetic editor scrolling: swipe and release to keep gliding; touch again to stop.
-- Adjustable post-release editor fling speed from 10% to 500%.
-- Long bottom-sheet menus are scrollable.
-- Search/replace sheet is compact and requests keyboard resize instead of reserving a large empty area.
-- Uses Android Storage Access Framework; no broad storage permission.
-- No ads, analytics, accounts or tracking.
+`feature/ui-ux-refresh` contains the UI candidate (versionCode 16). **main remains the phone-tested v0.12.0 / code 15. The candidate is not adopted or merged.**
 
-## Architecture
+- Four library destinations: home, documents, favorites and settings.
+- Consistent native light/dark surfaces, orange accents, icons and accessible controls.
+- Compact top navigation and reader/editor tabs with outline and bookmark actions.
+- In-layout find/replace: document stays visible, replacement controls expand on demand, previous/next reveal the selected result without focusing the editor.
+- Bounded sheets with a scrollable body and a persistent heading/close action.
+- The owner's supplied `.md` artwork is used for the adaptive/legacy launcher icon.
+- No framework migration or new production UI dependency.
 
-`MainActivity.java` and the rest of the application are normal direct source files under `app/src/main/`. The release build does not reconstruct source from chunks or apply a patch chain.
+See `PROJECT_MEMORY.md`, `plans/0013-ui-ux-refresh.md` and the candidate validation report under `docs/` for implementation and verification status. The complete pre-refresh memory is preserved verbatim in `docs/history/PROJECT_MEMORY-v0.12.0.md`.
 
-The editor uses `FlingEditText` + Android `OverScroller`/`VelocityTracker` for kinetic vertical scrolling while preserving ordinary tap/long-press text editing behavior as much as possible.
+## Existing capabilities retained
 
-See `PROJECT_MEMORY.md` for the project source of truth, implementation decisions, release rules and device-test findings.
+Open, read, edit, save/Save As via Android SAF; per-block RTL/LTR; Markdown formatting and undo/redo; full literal Unicode multiline search/replace; outline, bookmarks and quick navigation; tables, code highlighting and Mermaid; safe HTML; sharing and Android Print/PDF; recents, favorites, drafts and reading/editor position; local ML Kit and configured AI translation; local speech and OpenAI TTS; kinetic editor scrolling with a 10–500% speed setting.
 
-## Release build
+Single Enter remains a visible preview line break. Task answers retain their explicit checkmark and green highlight. There are no ads, analytics, tracking, account requirement or broad-storage permission.
 
-GitHub Actions validates the direct-source architecture, smoke tests, JavaScript syntax and renderer safety, then builds optimized ARM64 APK and AAB outputs, verifies ABI contents, and uploads the unsigned ARM64 test package for signing with the permanent release key.
+## Architecture and checks
+
+Direct Java sources under `app/src/main`, plus the existing WebView renderer. Builds do not reconstruct sources or apply patches. Release CI checks pure Java smoke suites, JavaScript, HTML policy, UI source contracts, optimized ARM64 APK and a separately built multi-ABI AAB. Device CI uses a dependency-free instrumentation runner and an API 35 emulator; it produces actual UI screenshots and checks search visibility, keyboard/focus, replacement/undo, sheet dismissal and rotation. Emulator results do not replace owner phone acceptance.
 
 ## Release identity
 
 - applicationId: `app.mdreader.mobile`
-- stable versionName: `0.12.0`
-- stable versionCode: `15`
-- minSdk: 26
-- compile/target SDK: 36
+- stable: versionName `0.12.0`, versionCode `15`
+- UI candidate: versionName `0.13.0`, versionCode `16`
+- minSdk 26; compile/target 36
+- Permanent release signature; credentials stay outside Git.
 
-Release signing credentials are never committed to the repository. Future updates must keep the same applicationId and permanent signing key and increment versionCode.
-
-
-## Named fenced code blocks — v0.12.0
-
-MD Reader can show an optional filename/title in the header of a fenced code block while preserving syntax highlighting and the copy button.
+## Named code blocks — retained from v0.12.0
 
 ~~~markdown
 ```python title="app.py"
@@ -56,16 +42,8 @@ print("Hello")
 ```
 ~~~
 
-A compact shorthand is also supported:
+The shorthand `python:app.py` and ordinary fences are also supported. In **أدوات Markdown وHTML**, **▣ حاوية بعنوان…** wraps the selection or inserts a placeholder. The title may be Arabic or English and syntax-highlighting language is optional.
 
-~~~markdown
-```python:app.py
-print("Hello")
-```
-~~~
+## Phone acceptance before merge
 
-Ordinary fences such as ```python remain fully supported and render without a title.
-
-### Editor shortcut
-
-Inside **أدوات Markdown وHTML**, use **▣ حاوية بعنوان…**. The dialog accepts an Arabic or English title plus an optional syntax-highlighting language such as `python`, `json`, or `text`. If text is selected, MD Reader wraps that selection; otherwise it inserts a ready-to-edit placeholder.
+Install the signed candidate as an update without uninstalling the existing app. Check existing documents/favorites/drafts, open/save, both themes, the keyboard and previous/next search, multiline replacement and undo, long sheets, titled code tools, outline/bookmarks and portrait/landscape. Report issues with screenshots. Do not merge before explicit approval.

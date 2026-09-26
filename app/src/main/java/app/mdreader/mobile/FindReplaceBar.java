@@ -75,7 +75,7 @@ final class FindReplaceBar extends LinearLayout {
         replacementRow.setVisibility(expanded&&!value?VISIBLE:GONE);query.setMaxLines(value?1:2);replacement.setMaxLines(value?1:2);
     }
     void setResults(int ordinal,int total){
-        count.setText(query.length()==0?"أدخل نص البحث":total==0?"لا توجد نتائج":ordinal+" / "+total);
+        count.setText(query.length()==0?"أدخل نص البحث":total==0?"لا توجد نتائج":ordinal+" من "+total);
         count.setContentDescription(total==0?"لا توجد نتائج":"النتيجة "+ordinal+" من "+total);
         for(TextView v:new TextView[]{previous,next,replaceOne,replaceAll})ReaderUi.enable(v,total>0);
     }

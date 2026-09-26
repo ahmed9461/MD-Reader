@@ -48,7 +48,7 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             StringBuilder source=new StringBuilder("Q1 البداية\n");for(int i=0;i<80;i++)source.append("سطر ").append(i+1).append(" — نص تجريبي للقراءة والبحث.\n");source.append("Q1 النهاية\nq1 small\nألف\nباء\nألف\nباء");
             final String document=source.toString();
             ui(()->{call("setText",new Class[]{String.class,boolean.class},document,true);call("setEditing",new Class[]{boolean.class},true);call("searchReplaceDialog");((EditText)field("searchInput")).setText("Q1");});
-            SystemClock.sleep(1000);waitForIdleSync();
+            waitForKeyboard();
             ui(()->{
                 View editor=(View)field("editor"),panel=(View)field("searchBar");int[] e=new int[2],p=new int[2];editor.getLocationOnScreen(e);panel.getLocationOnScreen(p);
                 check(e[1]>=p[1]+panel.getHeight(),"search does not overlay document");check(editor.getHeight()>=dp(120),"useful editor viewport above keyboard");
@@ -60,7 +60,7 @@ public final class UiRegressionInstrumentation extends Instrumentation {
                 call("find",new Class[]{boolean.class},false);
                 check(((EditText)field("editor")).getSelectionStart()==document.indexOf("q1 small"),"previous wraps to final match");
                 check(p.query.hasFocus(),"navigation does not steal query focus");
-            });pause();shot("07-find-result-dark");
+            });pause();ui(()->assertMatchVisible());shot("07-find-result-dark");
             ui(()->{call("find",new Class[]{boolean.class},true);check(((EditText)field("editor")).getSelectionStart()==0,"next wraps to first");
                 ((FindReplaceBar)field("findPanel")).replacement.setText("السؤال");call("replaceInline",new Class[]{boolean.class},false);
                 check(((EditText)field("editor")).getText().toString().startsWith("السؤال"),"replace one");call("undo");check(((EditText)field("editor")).getText().toString().equals(document),"undo restores exact document");
@@ -74,8 +74,20 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             ui(()->{call("searchReplaceDialog");((EditText)field("searchInput")).setText("Q1");activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);});SystemClock.sleep(1600);waitForIdleSync();
             ui(()->{check(((EditText)field("editor")).getText().toString().equals(document),"rotation preserves document");View e=(View)field("editor");check(e.getHeight()>dp(60),"landscape leaves document viewport");});shot("11-landscape-find");
             ui(()->{activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);call("closeSearch");});pause();
+            ui(()->call("translationSettings"));pause();assertCloseVisible();shot("12-translation-settings-dark");closeSheet();
             result.putString("stream","UI_REGRESSION_PASS: "+assertions+" assertions; screenshots captured.\n");finish(Activity.RESULT_OK,result);
         }catch(Throwable e){android.util.Log.e("MDReaderUiTest","UI regression failure",e);result.putString("stream","UI_REGRESSION_FAIL: "+android.util.Log.getStackTraceString(e));try{shot("failure");}catch(Exception ignored){}finish(Activity.RESULT_CANCELED,result);}
+    }
+    private void waitForKeyboard() throws Exception {
+        long deadline=SystemClock.uptimeMillis()+8000;final boolean[] visible={false};
+        do {pause();ui(()->visible[0]=activity.getWindow().getDecorView().getRootWindowInsets().isVisible(WindowInsets.Type.ime()));}
+        while(!visible[0]&&SystemClock.uptimeMillis()<deadline);
+        check(visible[0],"keyboard shown within cold-start deadline");
+    }
+    private void assertMatchVisible() throws Exception {
+        EditText e=(EditText)field("editor");android.text.Layout layout=e.getLayout();int line=layout.getLineForOffset(e.getSelectionStart());
+        int y=layout.getLineTop(line)-e.getScrollY();
+        check(y>=0&&y<e.getHeight()-e.getTotalPaddingTop()-e.getTotalPaddingBottom(),"selected match is inside visible document viewport");
     }
     private interface Work{void run() throws Exception;}
     private void ui(Work r) throws Exception {final Throwable[] error={null};runOnMainSync(()->{try{r.run();}catch(Throwable e){error[0]=e;}});if(error[0]!=null)throw new Exception(error[0]);}
