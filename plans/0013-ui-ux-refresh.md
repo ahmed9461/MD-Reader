@@ -1,42 +1,45 @@
 # v0.13.0 — UI / UX refresh
 
-Status: active, not approved or merged.
-Baseline: main 683c5c93ffe4674169039391e985bb9de2b24299 (v0.12.0, versionCode 15).
-Branch: feature/ui-ux-refresh.
+Status: implementation and automated validation complete; signed candidate prepared; awaiting owner phone acceptance. **Not approved or merged.**
+Baseline: main `683c5c93ffe4674169039391e985bb9de2b24299` (v0.12.0, versionCode 15).
+Branch: `feature/ui-ux-refresh`; draft PR #9.
+Tested source: `a5974fb6eae24d9adb6643f5bc9cce361118d6dd`.
 
-## Brief
-Preserve all working features and the permanent package/signature. Refresh all existing screens, tabs, navigation, controls and sheets. Use the owner's supplied dark .md mark (white letters, orange dot), not an unrelated logo. The owner's screenshot shows search/replace obscuring the document and keyboard; this must be fixed structurally, not just recolored.
+## Brief and decisions
 
-## Decisions before implementation
-- Keep native Java + existing WebView renderer; no framework migration or new heavyweight runtime.
-- Use shared visual tokens and consistent icons, contrast, spacing and 48dp touch targets. Compact appearance must not mean tiny touch targets.
-- Prefer an inline, nonmodal find/replace panel that takes layout space, keeps the document visible, and expands replacement controls only when needed. Preserve multiline literal Unicode search, current/previous/next and undo-safe replacement.
-- Review home/library/favorites/settings, reader/editor switch, editing tools, outline/bookmarks and long menus. Retain all existing entry points and actions.
-- Account for keyboard, RTL/LTR, short screens/landscape, system bars and larger fonts. Selected match must scroll into the remaining viewport.
-- Treat launch icon masking separately from artwork; preserve safe area for circular and squircle launchers.
-- main stays stable until successful release checks, real-phone testing and explicit merge approval.
+Preserve all working functions and the permanent package/signature. Refresh existing screens, tabs, controls, icons, navigation and sheets. Use the owner's supplied dark .md mark with white letters and an orange dot. Fix the covering search/replace structurally, not just by recoloring it.
+
+- Keep native Java + existing WebView renderer; no framework migration or heavyweight runtime.
+- Shared colors, spacing, states and icons; compact appearance must not mean tiny touch targets.
+- Search/replace stays in layout with visible document, optional replacement fields, Unicode/multiline literal matching and undo-safe replacement.
+- Long sheets keep a visible fixed close action and one scrolling body; account for system/keyboard insets.
+- Extremely short wide layouts place search beside the document. Short ordinary editing hides secondary chrome while the keyboard is open.
+- Preserve launcher masking margins without substituting a different logo.
+- main remains stable until automated checks, signed APK, owner phone test and explicit merge approval.
 
 ## Work plan
-- [x] Read baseline project memory, progress log, repository tree, branches and baseline CI. No open PRs.
-- [x] Audit concrete screen/layout implementations and record issues.
-- [x] Add shared UI primitives and refresh existing surfaces.
-- [ ] Replace modal search/replace with compact in-layout controls; test document visibility and replacement regressions.
-- [x] Integrate supplied icon with adaptive/legacy launcher support.
-- [ ] Add regression and UI/layout checks, run existing tests, build release APK/AAB.
-- [ ] Update PROJECT_MEMORY.md, PROGRESS_LOG.md and README with actual results and limitations.
-- [ ] Deliver test candidate; real-device review and merge remain pending.
 
-## Validation matrix
-Dark/light; Arabic/English; editor/preview; small portrait/landscape; keyboard open/closed; multiline search and replacement; no matches, first/last wrap, repeated replace, replace-all + undo; open/save/drafts/recents/favorites; all Markdown/HTML tools including titled fences; outline/bookmarks; large-document scrolling/rendering; translation/speech retained.
+- [x] Read baseline memory, progress, source tree, branches and baseline CI.
+- [x] Audit and implement shared UI, home/documents/favorites/settings, reader/editor navigation and long sheets.
+- [x] Implement in-layout search/replace; verify visibility, wrapping, focus, replacement and undo on a device emulator.
+- [x] Integrate supplied icon with adaptive/legacy resources and align preview colors.
+- [x] Address actual emulator findings, including cold IME and landscape viewport; extend compact handling to normal editing.
+- [x] Run all existing smoke suites plus 277 SearchMatchState checks, JS/XML/source contracts.
+- [x] Build and verify optimized ARM64 APK and separate AAB; Android UI run passed 32 assertions and produced 13 reviewed screenshots.
+- [x] Sign candidate with permanent key, verify v2/v3/certificate and packaged identity.
+- [x] Update project memory, progress, README, layout-review and exact validation report.
+- [x] Prepare signed v0.13.0 candidate for owner phone testing.
+- [ ] Owner tests physical-phone upgrade, desired appearance and daily workflows.
+- [ ] Explicit merge approval, then final current-head checks and merge.
 
-## Development note
-A short-lived branch-only source snapshot workflow is used to transfer the exact checked-out source into the review workspace because direct network access there is unavailable. It exports tracked source only (no credentials); remove it before final delivery. It is not a source reconstruction or patching build architecture.
+## Evidence and scope
 
-## Implementation / audit notes
-- Replaced the covering search Dialog with a two-row in-layout FindReplaceBar and optional replacement row. Navigation hides IME without moving focus to the editor; the active range remains visibly highlighted. Short landscape space temporarily collapses secondary search controls.
-- Shared UiPalette, ReaderUi and vector-style UiIcon unify native controls. Library now has home/documents/favorites/settings destinations, explicit document overflow actions, smaller reader tabs and dedicated outline/bookmark controls.
-- All sheets use ResponsiveSheet: bounded width, one scroll body, visible header close, real system/IME insets. Speech settings use the same component. Existing scroll lists are unwrapped, not nested at zero height.
-- Used the supplied image pixels for .md identity, square/resampled only; adaptive inset preserves launcher masking. Reader CSS follows the orange palette and offers 48px copy controls without overlaying code text.
-- SearchMatchState avoids the old previous-at-first bug and preserves non-overlapping literal semantics/case counts; 277 pure-Java navigation checks passed locally alongside all existing smoke suites and JS/XML checks.
-- Added dependency-free Android instrumentation and screenshot CI; execution pending. User phone acceptance and main merge pending.
-- Removed the old build step that deleted unrelated previous release artifacts. Metadata now agrees on versionCode 16. No package/key change.
+`docs/UI_REDESIGN_VALIDATION.md` is the exact source/run/artifact/hash record; `docs/UI_LAYOUT_REVIEW.md` explains findings. Release run `36269131631` and UI run `36269131647` passed for the delivered source. Later documentation updates do not change that APK.
+
+Dark/light and Arabic/English screens were reviewed. Keyboard, previous/next, multiline replacement/undo, rotation, navigation and several sheet types have runtime checks. Existing open/save/drafts, all formatting tools, outline/bookmarks, external translation/speech and large-document daily use still require owner acceptance; source preservation/smoke checks do not equal every end-to-end scenario. Full font-scale/OS/IME matrix remains unverified.
+
+## Cleanup and next step
+
+All temporary source-transport and patch workflows were removed. Release and UI builds compile direct sources. Unrelated old artifacts are no longer deleted by the release workflow. Permanent applicationId/signature are unchanged.
+
+Wait for owner feedback; do not redo completed stages or call this candidate stable before phone acceptance and explicit approval.
