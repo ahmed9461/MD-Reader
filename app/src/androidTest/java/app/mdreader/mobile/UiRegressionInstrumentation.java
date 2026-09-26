@@ -40,8 +40,9 @@ public final class UiRegressionInstrumentation extends Instrumentation {
                     store.touch(Uri.fromFile(file),name);if(name.contains("دفتر")||name.contains("خطة"))store.setFavorite(Uri.fromFile(file).toString(),true);
                 }call("refreshHome");
             });pause();shot("01-home-light");
-            ui(()->{TextView[] tabs=(TextView[])field("homeTabs");check(tabs.length==4,"four library tabs");tabs[1].performClick();});pause();shot("02-documents-light");
-            ui(()->{call("toggleTheme");call("switchHomePage",new Class[]{int.class},2);});pause();shot("03-favorites-dark");
+            ui(()->{TextView[] tabs=(TextView[])field("homeTabs");check(tabs.length==4,"four library tabs");tabs[1].performClick();});pause();ui(()->assertDocumentsSpacing());shot("02-documents-light");
+            ui(()->call("toggleTheme"));pause();ui(()->assertDocumentsSpacing());shot("02b-documents-dark");
+            ui(()->call("switchHomePage",new Class[]{int.class},2));pause();shot("03-favorites-dark");
             ui(()->call("switchHomePage",new Class[]{int.class},3));pause();shot("04-settings-dark");
             ui(()->{set("currentName","دفتر الأفكار.md");call("setText",new Class[]{String.class,boolean.class},sample,true);call("showDocument");call("setEditing",new Class[]{boolean.class},false);});
             SystemClock.sleep(1600);waitForIdleSync();shot("05-reader-dark");
@@ -85,6 +86,21 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             ui(()->call("translationSettings"));pause();assertCloseVisible();shot("12-translation-settings-dark");closeSheet();
             result.putString("stream","UI_REGRESSION_PASS: "+assertions+" assertions; screenshots captured.\n");finish(Activity.RESULT_OK,result);
         }catch(Throwable e){android.util.Log.e("MDReaderUiTest","UI regression failure",e);result.putString("stream","UI_REGRESSION_FAIL: "+android.util.Log.getStackTraceString(e));try{shot("failure");}catch(Exception ignored){}finish(Activity.RESULT_CANCELED,result);}
+    }
+    private void assertDocumentsSpacing() throws Exception {
+        android.widget.LinearLayout content=(android.widget.LinearLayout)field("homeContent");
+        int index=-1;
+        for(int i=0;i<content.getChildCount();i++){
+            View child=content.getChildAt(i);
+            if(child instanceof TextView&&"فتح ملف من الجهاز".contentEquals(((TextView)child).getText())){index=i;break;}
+        }
+        check(index>=0,"Documents open button exists");
+        check(content.getChildCount()>index+2,"Documents regression has at least two file cards");
+        View open=content.getChildAt(index),first=content.getChildAt(index+1),second=content.getChildAt(index+2);
+        check(first.getTop()-open.getBottom()==dp(16),"16dp gap below Documents open button");
+        check(second.getTop()-first.getBottom()==dp(9),"existing 9dp inter-card gap preserved");
+        check(open.getLeft()==first.getLeft()&&open.getRight()==first.getRight(),"button and cards stay horizontally aligned");
+        check(open.getHeight()>=dp(48),"Documents open action retains 48dp touch target");
     }
     private void waitForKeyboard() throws Exception {
         long deadline=SystemClock.uptimeMillis()+8000;final boolean[] visible={false};

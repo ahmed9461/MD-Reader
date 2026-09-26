@@ -676,7 +676,12 @@ public class MainActivity extends Activity {
             }
         }else{
             homeContent.addView(label(names[homePage],26,text,true),textLp());homeContent.addView(label(homePage==2?"ملفاتك المهمة، في مكان واحد.":"الملفات التي فتحتها مؤخرًا على جهازك.",14,muted,false),textLp());
-            if(homePage==1){TextView open=homeButton("فتح ملف من الجهاز",true);open.setOnClickListener(v->openPicker());homeContent.addView(open,buttonLp());}
+            if(homePage==1){
+                TextView open=homeButton("فتح ملف من الجهاز",true);open.setOnClickListener(v->openPicker());
+                // Separate the primary action from the list without changing shared card/button spacing.
+                LinearLayout.LayoutParams openLp=buttonLp();openLp.bottomMargin=dp(16);
+                homeContent.addView(open,openLp);
+            }
         }
         List<RecentStore.Entry> entries=homePage==2?recents.favorites():recents.all();
         if(homePage==0)section("أُضيفت مؤخرًا");
@@ -698,7 +703,7 @@ public class MainActivity extends Activity {
         homeSetting("سرعة تمرير المحرر • "+editorScrollPercent+"%",UiIcon.Kind.SETTINGS,this::editorScrollSettings);
         section("اللغة والصوت");homeSetting("إعدادات الترجمة",UiIcon.Kind.TEXT,this::translationSettings);
         homeSetting("إعدادات القراءة بالصوت",UiIcon.Kind.SPEAKER,()->SpeechSettingsDialog.show(this,speech));
-        section("MD Reader");homeSetting("حول التطبيق • 0.13.0",UiIcon.Kind.INFO,this::about);
+        section("MD Reader");homeSetting("حول التطبيق • 0.13.1",UiIcon.Kind.INFO,this::about);
         TextView privacy=label("لا إعلانات • لا تحليلات • لا تتبع",13,muted,false);privacy.setGravity(Gravity.CENTER);homeContent.addView(privacy,textLp());
     }
     private void homeSetting(String name,UiIcon.Kind icon,Runnable action){
@@ -816,7 +821,7 @@ public class MainActivity extends Activity {
     private void outline(){List<OutlineParser.Heading> hs=OutlineParser.parse(txt());if(hs.isEmpty()){Toast.makeText(this,"لا توجد عناوين في الملف",Toast.LENGTH_SHORT).show();return;}Dialog d=dialog();LinearLayout p=panel("فهرس المستند");ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);sc.addView(list);for(int i=0;i<hs.size();i++){int idx=i;OutlineParser.Heading h=hs.get(i);TextView r=sheetButton(repeat("   ",Math.max(0,h.level-1))+h.title,false);r.setOnClickListener(v->dismissSheet(d,p,()->{if(editing){jumpEditorOffset(Math.min(h.offset,editor.length()));}else preview.evaluateJavascript("window.scrollToHeading("+idx+");",null);}));list.addView(r,buttonLp());}p.addView(sc,new LinearLayout.LayoutParams(-1,0,1));TextView close=sheetButton("إغلاق",false);close.setOnClickListener(v->dismissSheet(d,p,null));p.addView(close,buttonLp());showDialog(d,p,true);}
     private void pdf(){if(homeMode)return;render();if(editing)setEditing(false);preview.postDelayed(()->{try{PrintManager pm=(PrintManager)getSystemService(Context.PRINT_SERVICE);PrintDocumentAdapter a=preview.createPrintDocumentAdapter(stripMd(currentName));pm.print(stripMd(currentName),a,null);}catch(Exception e){error("تعذر بدء التصدير",e);}},650);}
     private void share(){if(homeMode)return;if(currentUri==null||dirty){save(this::share);return;}Intent i=new Intent(Intent.ACTION_SEND);i.setType("text/markdown");i.putExtra(Intent.EXTRA_STREAM,currentUri);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);try{startActivity(Intent.createChooser(i,"مشاركة الملف"));}catch(Exception e){error("تعذر مشاركة الملف",e);}}
-    private void about(){message("MD Reader 0.13.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، عناوين مخصصة لحاويات الكود، طبقة HTML آمنة ومفلترة مع أدوات جاهزة للتظليل والألوان والمحاذاة والتفاصيل، مربعات الاختيار والإجابات الصحيحة المظللة، أدوات مباشرة لتحديد الإجابة الصحيحة وتوحيد مربعات الاختيار، معاينة محسنة للملفات الكبيرة، تنزيل ملفات Markdown العامة مباشرة من GitHub، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
+    private void about(){message("MD Reader 0.13.1","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، عناوين مخصصة لحاويات الكود، طبقة HTML آمنة ومفلترة مع أدوات جاهزة للتظليل والألوان والمحاذاة والتفاصيل، مربعات الاختيار والإجابات الصحيحة المظللة، أدوات مباشرة لتحديد الإجابة الصحيحة وتوحيد مربعات الاختيار، معاينة محسنة للملفات الكبيرة، تنزيل ملفات Markdown العامة مباشرة من GitHub، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
 
     private void speechMenu(){
         List<Action>a=new ArrayList<>();

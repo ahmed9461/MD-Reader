@@ -2,6 +2,14 @@
 
 > سجل تقدم مكمل لـ `PROJECT_MEMORY.md`. تقرير `docs/UI_REDESIGN_VALIDATION.md` يحمل بيانات المرشح الدقيقة وحدود الفحص.
 
+## 2026-09-26 — v0.13.1 Documents spacing follow-up (validation pending)
+
+- Owner likes v0.13.0 (9.5/10), but supplied a phone screenshot showing no separation between the open-file button and first document card.
+- Root cause: the action layout has only a top margin, and the card layout only a bottom margin. Added a local 16dp bottom margin to the Documents action; no shared spacing, file data, navigation, icons, package or signing-key change.
+- Added light/dark device checks for the actual 16dp boundary, unchanged 9dp inter-card spacing, aligned edges and 48dp button height.
+- New candidate version 0.13.1 / 17. Release/device CI and permanent signing must be verified before delivery; no new success claimed here.
+- Same draft PR #9 and existing plan. main unchanged; no merge approval.
+
 ## 2026-09-26 — v0.13.0 UI / UX candidate ready for phone testing
 
 - main بقي v0.12.0 / code 15 عند `683c5c93ffe4674169039391e985bb9de2b24299` دون تعديل.

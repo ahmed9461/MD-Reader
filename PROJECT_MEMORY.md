@@ -2,7 +2,13 @@
 
 > اقرأ هذا الملف والخطة النشطة وتقرير التحقق قبل التعديل. السجل السابق محفوظ **حرفيًا دون حذف** في `docs/history/PROJECT_MEMORY-v0.12.0.md`، بما فيه الإصدارات والفحوص وقرارات HTML والأداء والتوقيع. لا تعتمد مرشحًا تجريبيًا بالخطأ.
 
-## الحالة الحالية — 2026-09-26
+## Current follow-up — v0.13.1 / versionCode 17
+
+Owner tested v0.13.0, liked the redesign (9.5/10), and reported that the Documents open button touches the first file card. A focused code fix adds a 16dp bottom margin to that button only; shared 9dp card spacing and 48dp touch targets remain unchanged. Real-layout checks cover light and dark Documents screens. Visible version and release workflow expectations are updated together.
+
+Work remains on `feature/ui-ux-refresh`, draft PR #9 and existing plan `plans/0013-ui-ux-refresh.md`. New release/device checks and permanent-key signing are pending; the old v0.13.0 evidence below does not validate this new source. main stays v0.12.0. No merge approval has been given. This task is an application correction, not an image generation request.
+
+## مرجع المرشح السابق v0.13.0 — 2026-09-26
 
 - المستودع: `ahmed9461/MD-Reader`.
 - المستقر على `main`: **v0.12.0 / versionCode 15** عند `683c5c93ffe4674169039391e985bb9de2b24299`، اعتمده المستخدم على هاتفه ثم وافق على دمج PR #7.
@@ -63,4 +69,4 @@ PKCS12 خارج Git، alias `mdreader`. شهادة SHA-256:
 
 ## نقطة الاستكمال
 
-انتظار ملاحظات المستخدم على النسخة الموقعة v0.13.0. عند ورود مشكلة أعد إنتاجها ثم أصلحها على الفرع نفسه وحدّث الخطة والتقرير. لا تكرر تنفيذ إعادة التصميم أو تنسخ الذاكرة في الرد. قبل الدمج يلزم اختبار الهاتف وموافقة صريحة وفحص الحالة الحالية للمستودع وCI؛ لا تعتبر نجاح المحاكي موافقة من المستخدم.
+إكمال فحص وتوقيع وتسليم إصلاح المسافة v0.13.1 ثم انتظار تجربة المستخدم وموافقته الصريحة. عند ورود مشكلة أعد إنتاجها ثم أصلحها على الفرع نفسه وحدّث الخطة والتقرير. لا تكرر تنفيذ إعادة التصميم أو تنسخ الذاكرة في الرد. قبل الدمج يلزم اختبار الهاتف وموافقة صريحة وفحص الحالة الحالية للمستودع وCI؛ لا تعتبر نجاح المحاكي موافقة من المستخدم.

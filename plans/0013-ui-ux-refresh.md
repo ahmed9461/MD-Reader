@@ -36,9 +36,9 @@ Preserve all working functions and the permanent package/signature. Refresh exis
 ## Focused follow-up — Documents spacing, v0.13.1 / code 17
 
 - [x] Inspect the owner's screenshot and current branch code. `buttonLp()` has only a 6dp top margin, while `cardLp()` has only a 9dp bottom margin: neither adds a gap at this boundary.
-- [ ] Add a 16dp bottom margin specifically to the Documents open button. Do not change shared button/card margins, card internals, other tabs, app data, package or signature.
-- [ ] Add real-layout regression checks for the gap, unchanged card spacing and 48dp touch target in light/dark Documents screens.
-- [ ] Increment delivered version to 0.13.1 / 17, keeping workflow assertions and visible version strings consistent.
+- [x] Add a 16dp bottom margin specifically to the Documents open button. Do not change shared button/card margins, card internals, other tabs, app data, package or signature.
+- [x] Add real-layout regression checks for the gap, unchanged card spacing and 48dp touch target in light/dark Documents screens.
+- [x] Increment delivered version to 0.13.1 / 17, keeping workflow assertions and visible version strings consistent.
 - [ ] Run release and device CI against the exact new source; inspect actual device screenshots.
 - [ ] Sign and verify the update with the existing permanent key, update evidence and deliver the APK.
 
