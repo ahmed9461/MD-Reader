@@ -9,6 +9,9 @@ assert 'new FindReplaceBar' in main and 'ResponsiveSheet.show' in main
 assert 'SearchMatchState.scan' in main
 assert 'editor.requestFocus();editor.setSelection(idx' not in main
 assert 'FlingEditText' in main and 'setFlingSpeedPercent' in main
+assert 'findPanel.setSideBySide(split)' in main and 'root.setOrientation(orientation)' in main
+assert 'homeMode||focusSearch||tight' in main
+assert '!homeMode&&editing&&!searching&&!tight' in main
 for name in ('homePage','showDocument','safeHtmlTools','titledCodeBlockTool','GitHubMarkdownSource.download','speechMenu','translationSettings','undo','redo'):
     assert name in main,name
 sheet=(j/'ResponsiveSheet.java').read_text()
