@@ -1,0 +1,27 @@
+name: One-time reviewed source polish
+on:
+  push:
+    branches: ['feature/ui-ux-refresh']
+    paths: ['.github/workflows/ui-polish.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply reviewed text diff to direct source
+        run: |
+          echo 'c2cf4865cdcd42cc56ff1c4edf15efc96827f7dec17fd2c6a1fef86d1a7055d4  app/src/main/java/app/mdreader/mobile/MainActivity.java' | sha256sum -c
+          git apply --check .ui-polish.patch
+          git apply .ui-polish.patch
+          echo '84986a54d2356901896f5e10136f5f98a32f0b114e3b279ed3d6f33b44c541f5  app/src/main/java/app/mdreader/mobile/MainActivity.java' | sha256sum -c
+          rm .ui-polish.patch
+          git diff --check
+          python3 tools/ui-contract-check.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/java/app/mdreader/mobile/MainActivity.java .ui-polish.patch
+          git commit -m 'Polish selected-control contrast and Arabic navigation labels'
+          git push origin HEAD:feature/ui-ux-refresh
