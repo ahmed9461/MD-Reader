@@ -1,9 +1,9 @@
 # v0.13.0 — UI / UX refresh
 
-Status: implementation and automated validation complete; signed candidate prepared; awaiting owner phone acceptance. **Not approved or merged.**
+Status: original implementation and automated validation complete; owner likes the redesign (9.5/10) but reports missing separation between the Documents open button and first file card. Focused v0.13.1 follow-up in progress. **Not approved for merge or merged.**
 Baseline: main `683c5c93ffe4674169039391e985bb9de2b24299` (v0.12.0, versionCode 15).
 Branch: `feature/ui-ux-refresh`; draft PR #9.
-Tested source: `a5974fb6eae24d9adb6643f5bc9cce361118d6dd`.
+Original tested source: `a5974fb6eae24d9adb6643f5bc9cce361118d6dd`.
 
 ## Brief and decisions
 
@@ -29,17 +29,29 @@ Preserve all working functions and the permanent package/signature. Refresh exis
 - [x] Sign candidate with permanent key, verify v2/v3/certificate and packaged identity.
 - [x] Update project memory, progress, README, layout-review and exact validation report.
 - [x] Prepare signed v0.13.0 candidate for owner phone testing.
-- [ ] Owner tests physical-phone upgrade, desired appearance and daily workflows.
+- [x] Receive owner phone feedback: redesign liked; Documents button/card spacing needs a fix.
+- [ ] Owner tests physical-phone upgrade, desired appearance and daily workflows after the spacing fix.
 - [ ] Explicit merge approval, then final current-head checks and merge.
+
+## Focused follow-up — Documents spacing, v0.13.1 / code 17
+
+- [x] Inspect the owner's screenshot and current branch code. `buttonLp()` has only a 6dp top margin, while `cardLp()` has only a 9dp bottom margin: neither adds a gap at this boundary.
+- [ ] Add a 16dp bottom margin specifically to the Documents open button. Do not change shared button/card margins, card internals, other tabs, app data, package or signature.
+- [ ] Add real-layout regression checks for the gap, unchanged card spacing and 48dp touch target in light/dark Documents screens.
+- [ ] Increment delivered version to 0.13.1 / 17, keeping workflow assertions and visible version strings consistent.
+- [ ] Run release and device CI against the exact new source; inspect actual device screenshots.
+- [ ] Sign and verify the update with the existing permanent key, update evidence and deliver the APK.
+
+This is an application code correction, not an image/mockup request. Use the same development branch and existing PR; no redesign restart and no merge without explicit owner approval.
 
 ## Evidence and scope
 
-`docs/UI_REDESIGN_VALIDATION.md` is the exact source/run/artifact/hash record; `docs/UI_LAYOUT_REVIEW.md` explains findings. Release run `36269131631` and UI run `36269131647` passed for the delivered source. Later documentation updates do not change that APK.
+`docs/UI_REDESIGN_VALIDATION.md` records the original source/run/artifact/hash; `docs/UI_LAYOUT_REVIEW.md` explains its findings. Release run `36269131631` and UI run `36269131647` passed for the original v0.13.0 source. Those results must not be presented as validation of the new fix.
 
 Dark/light and Arabic/English screens were reviewed. Keyboard, previous/next, multiline replacement/undo, rotation, navigation and several sheet types have runtime checks. Existing open/save/drafts, all formatting tools, outline/bookmarks, external translation/speech and large-document daily use still require owner acceptance; source preservation/smoke checks do not equal every end-to-end scenario. Full font-scale/OS/IME matrix remains unverified.
 
 ## Cleanup and next step
 
-All temporary source-transport and patch workflows were removed. Release and UI builds compile direct sources. Unrelated old artifacts are no longer deleted by the release workflow. Permanent applicationId/signature are unchanged.
+Final release and UI builds must compile direct sources; remove any temporary source-transport workflow before building the delivered candidate. Unrelated old artifacts must not be deleted. Permanent applicationId/signature stay unchanged.
 
-Wait for owner feedback; do not redo completed stages or call this candidate stable before phone acceptance and explicit approval.
+Complete only the focused follow-up, record exact new evidence, and wait for the owner's updated phone feedback. Do not call this candidate stable before phone acceptance and explicit merge approval.
