@@ -72,7 +72,12 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             ui(()->call("titledCodeBlockTool"));pause();assertCloseVisible();shot("09-code-title-dialog-dark");closeSheet();
             ui(()->SpeechSettingsDialog.show(activity,(SpeechReader)field("speech")));pause();assertCloseVisible();shot("10-speech-settings-dark");closeSheet();
             ui(()->{call("searchReplaceDialog");((EditText)field("searchInput")).setText("Q1");activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);});SystemClock.sleep(1600);waitForIdleSync();
-            ui(()->{check(((EditText)field("editor")).getText().toString().equals(document),"rotation preserves document");View e=(View)field("editor");check(e.getHeight()>dp(60),"landscape leaves document viewport");});shot("11-landscape-find");
+            ui(()->{check(((EditText)field("editor")).getText().toString().equals(document),"rotation preserves document");View e=(View)field("editor");check(e.getHeight()>dp(60),"landscape leaves document viewport");
+                FindReplaceBar p=(FindReplaceBar)field("findPanel");int[] ep=new int[2],pp=new int[2];e.getLocationOnScreen(ep);p.getLocationOnScreen(pp);
+                check(ep[0]+e.getWidth()<=pp[0]||pp[0]+p.getWidth()<=ep[0],"short landscape search is beside document");
+                check(p.replacement.isShown(),"expanded replacement remains available in short landscape");
+                check(p.query.getHeight()>=dp(48)&&p.replacement.getHeight()>=dp(48),"landscape fields retain touch targets");
+            });shot("11-landscape-find");
             ui(()->{activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);call("closeSearch");});pause();
             ui(()->call("translationSettings"));pause();assertCloseVisible();shot("12-translation-settings-dark");closeSheet();
             result.putString("stream","UI_REGRESSION_PASS: "+assertions+" assertions; screenshots captured.\n");finish(Activity.RESULT_OK,result);

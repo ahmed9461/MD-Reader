@@ -137,7 +137,7 @@ final class SpeechSettingsDialog {
     private static TextView action(Activity a, String value, int fill, int color, boolean primary) {
         TextView v = text(a, value, 15, color, primary);
         v.setGravity(Gravity.CENTER);
-        ReaderUi.accessibleAction(v);
+        ReaderUi.accessibleAction(v);v.setMinHeight(dp(a,48));
         v.setPadding(dp(a,12),dp(a,10),dp(a,12),dp(a,10));v.setBackground(ReaderUi.ripple(a,fill,Color.TRANSPARENT,13,color));
         return v;
     }
@@ -168,24 +168,5 @@ final class SpeechSettingsDialog {
         d.setColor(fill); d.setStroke(dp(a, 1), stroke); d.setCornerRadius(dp(a, radiusDp)); return d;
     }
 
-    private static int themeColor(Activity a, int attr, int fallback) {
-        TypedValue out = new TypedValue();
-        if (a.getTheme().resolveAttribute(attr, out, true)) {
-            if (out.type >= TypedValue.TYPE_FIRST_COLOR_INT && out.type <= TypedValue.TYPE_LAST_COLOR_INT) return out.data;
-            if (out.resourceId != 0) {
-                try { return a.getColor(out.resourceId); } catch (Exception ignored) {}
-            }
-        }
-        return fallback;
-    }
-
-    private static int withAlpha(int color, float alpha) { return Color.argb(Math.round(255f * alpha), Color.red(color), Color.green(color), Color.blue(color)); }
-    private static float luminance(int c) { return (0.2126f * Color.red(c) + 0.7152f * Color.green(c) + 0.0722f * Color.blue(c)) / 255f; }
-    private static int lighten(int c, float amount) { return mix(c, Color.WHITE, amount); }
-    private static int darken(int c, float amount) { return mix(c, Color.BLACK, amount); }
-    private static int mix(int a, int b, float t) {
-        t = Math.max(0f, Math.min(1f, t));
-        return Color.rgb(Math.round(Color.red(a) * (1f - t) + Color.red(b) * t), Math.round(Color.green(a) * (1f - t) + Color.green(b) * t), Math.round(Color.blue(a) * (1f - t) + Color.blue(b) * t));
-    }
     private static int dp(Activity a, int value) { return Math.round(value * a.getResources().getDisplayMetrics().density); }
 }

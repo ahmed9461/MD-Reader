@@ -22,7 +22,7 @@ final class FindReplaceBar extends LinearLayout {
     private final LinearLayout options,replacementRow;
     private final Listener listener;
     private UiPalette palette;
-    private boolean matchCase,expanded,editing,compact;
+    private boolean matchCase,expanded,editing,compact,sideBySide;
     FindReplaceBar(Context c,UiPalette palette,Listener listener){
         super(c);this.palette=palette;this.listener=listener;
         setOrientation(VERTICAL);setPadding(ReaderUi.dp(c,8),ReaderUi.dp(c,4),ReaderUi.dp(c,8),ReaderUi.dp(c,4));
@@ -69,10 +69,16 @@ final class FindReplaceBar extends LinearLayout {
     boolean matchesCase(){return editing&&matchCase;}
     boolean isExpanded(){return expanded;}
     void setEditorMode(boolean value){editing=value;if(!value)setExpanded(false);caseButton.setVisibility(value?VISIBLE:GONE);}
-    void setExpanded(boolean value){expanded=value;replacementRow.setVisibility(value&&!compact?VISIBLE:GONE);ReaderUi.selected(expand,value,palette);expand.setContentDescription(value?"طي خيارات الاستبدال":"إظهار خيارات الاستبدال");}
+    void setExpanded(boolean value){expanded=value;replacementRow.setVisibility(value&&(!compact||sideBySide)?VISIBLE:GONE);ReaderUi.selected(expand,value,palette);expand.setContentDescription(value?"طي خيارات الاستبدال":"إظهار خيارات الاستبدال");}
     void setCompact(boolean value){
         if(compact==value)return;compact=value;options.setVisibility(value?GONE:VISIBLE);
-        replacementRow.setVisibility(expanded&&!value?VISIBLE:GONE);query.setMaxLines(value?1:2);replacement.setMaxLines(value?1:2);
+        replacementRow.setVisibility(expanded&&(!value||sideBySide)?VISIBLE:GONE);query.setMaxLines(value?1:2);replacement.setMaxLines(value?1:2);
+    }
+    void setSideBySide(boolean value){
+        if(sideBySide==value)return;sideBySide=value;
+        int horizontal=ReaderUi.dp(getContext(),8),vertical=value?0:ReaderUi.dp(getContext(),4);
+        setPadding(horizontal,vertical,horizontal,vertical);
+        replacementRow.setVisibility(expanded&&(!compact||value)?VISIBLE:GONE);
     }
     void setResults(int ordinal,int total){
         count.setText(query.length()==0?"أدخل نص البحث":total==0?"لا توجد نتائج":ordinal+" من "+total);
