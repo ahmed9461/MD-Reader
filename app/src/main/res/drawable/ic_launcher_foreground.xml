@@ -1,8 +1,6 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <bitmap
-            android:src="@drawable/ic_launcher_art"
-            android:gravity="fill"
-            android:filter="true" />
+    <!-- 108dp canvas: keep the supplied .md lettering inside all launcher masks. -->
+    <item android:left="14dp" android:top="14dp" android:right="14dp" android:bottom="14dp">
+        <bitmap android:src="@drawable/ic_launcher_art" android:gravity="fill" android:filter="true" />
     </item>
 </layer-list>

@@ -18,10 +18,10 @@ Preserve all working features and the permanent package/signature. Refresh all e
 
 ## Work plan
 - [x] Read baseline project memory, progress log, repository tree, branches and baseline CI. No open PRs.
-- [ ] Audit concrete screen/layout implementations and record issues.
-- [ ] Add shared UI primitives and refresh existing surfaces.
+- [x] Audit concrete screen/layout implementations and record issues.
+- [x] Add shared UI primitives and refresh existing surfaces.
 - [ ] Replace modal search/replace with compact in-layout controls; test document visibility and replacement regressions.
-- [ ] Integrate supplied icon with adaptive/legacy launcher support.
+- [x] Integrate supplied icon with adaptive/legacy launcher support.
 - [ ] Add regression and UI/layout checks, run existing tests, build release APK/AAB.
 - [ ] Update PROJECT_MEMORY.md, PROGRESS_LOG.md and README with actual results and limitations.
 - [ ] Deliver test candidate; real-device review and merge remain pending.
@@ -31,3 +31,12 @@ Dark/light; Arabic/English; editor/preview; small portrait/landscape; keyboard o
 
 ## Development note
 A short-lived branch-only source snapshot workflow is used to transfer the exact checked-out source into the review workspace because direct network access there is unavailable. It exports tracked source only (no credentials); remove it before final delivery. It is not a source reconstruction or patching build architecture.
+
+## Implementation / audit notes
+- Replaced the covering search Dialog with a two-row in-layout FindReplaceBar and optional replacement row. Navigation hides IME without moving focus to the editor; the active range remains visibly highlighted. Short landscape space temporarily collapses secondary search controls.
+- Shared UiPalette, ReaderUi and vector-style UiIcon unify native controls. Library now has home/documents/favorites/settings destinations, explicit document overflow actions, smaller reader tabs and dedicated outline/bookmark controls.
+- All sheets use ResponsiveSheet: bounded width, one scroll body, visible header close, real system/IME insets. Speech settings use the same component. Existing scroll lists are unwrapped, not nested at zero height.
+- Used the supplied image pixels for .md identity, square/resampled only; adaptive inset preserves launcher masking. Reader CSS follows the orange palette and offers 48px copy controls without overlaying code text.
+- SearchMatchState avoids the old previous-at-first bug and preserves non-overlapping literal semantics/case counts; 277 pure-Java navigation checks passed locally alongside all existing smoke suites and JS/XML checks.
+- Added dependency-free Android instrumentation and screenshot CI; execution pending. User phone acceptance and main merge pending.
+- Removed the old build step that deleted unrelated previous release artifacts. Metadata now agrees on versionCode 16. No package/key change.
