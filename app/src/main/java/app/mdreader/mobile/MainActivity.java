@@ -193,7 +193,7 @@ public class MainActivity extends Activity {
         if(top==null||findPanel==null||bottom==null||formatBar==null)return;
         int available=root.getHeight()-root.getPaddingTop()-root.getPaddingBottom();
         boolean searching=!homeMode&&searchBar.getVisibility()==View.VISIBLE;
-        boolean tight=searching&&available>0&&available<dp(420);
+        boolean tight=!homeMode&&available>0&&available<dp(420)&&(searching||keyboardVisible);
         // A tall landscape IME can leave under 100dp: share width, not scarce height.
         boolean split=searching&&available>0&&available<dp(170)
                 &&root.getWidth()-root.getPaddingLeft()-root.getPaddingRight()>dp(600);
@@ -208,8 +208,8 @@ public class MainActivity extends Activity {
         top.setVisibility(tight?View.GONE:View.VISIBLE);
         // Without IME, keep replacement options available while hiding secondary chrome.
         boolean focusSearch=searching&&(keyboardVisible||tight);
-        bottom.setVisibility(homeMode||focusSearch?View.GONE:View.VISIBLE);
-        formatBar.setVisibility(!homeMode&&editing&&!searching?View.VISIBLE:View.GONE);
+        bottom.setVisibility(homeMode||focusSearch||tight?View.GONE:View.VISIBLE);
+        formatBar.setVisibility(!homeMode&&editing&&!searching&&!tight?View.VISIBLE:View.GONE);
     }
     private void switchHomePage(int page){
         if(!homeMode)return;homeScroll[homePage]=home.getScrollY();homePage=page;refreshHome();

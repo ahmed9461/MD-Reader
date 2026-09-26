@@ -78,6 +78,9 @@ public final class UiRegressionInstrumentation extends Instrumentation {
                 check(p.replacement.isShown(),"expanded replacement remains available in short landscape");
                 check(p.query.getHeight()>=dp(48)&&p.replacement.getHeight()>=dp(48),"landscape fields retain touch targets");
             });shot("11-landscape-find");
+            ui(()->call("closeSearch"));pause();
+            ui(()->{EditText e=(EditText)field("editor");e.requestFocus();call("keyboard",new Class[]{View.class},e);});
+            waitForKeyboard();ui(()->check(((View)field("editor")).getHeight()>dp(60),"plain landscape editor remains visible above keyboard"));shot("11b-landscape-editor");
             ui(()->{activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);call("closeSearch");});pause();
             ui(()->call("translationSettings"));pause();assertCloseVisible();shot("12-translation-settings-dark");closeSheet();
             result.putString("stream","UI_REGRESSION_PASS: "+assertions+" assertions; screenshots captured.\n");finish(Activity.RESULT_OK,result);
