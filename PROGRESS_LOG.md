@@ -1,14 +1,19 @@
 # MD Reader — Progress Log
 
-> سجل تقدم مكمل لـ `PROJECT_MEMORY.md`. تقرير `docs/UI_REDESIGN_VALIDATION.md` يحمل بيانات المرشح الدقيقة وحدود الفحص.
+> سجل تقدم مكمل لـ `PROJECT_MEMORY.md`. تقرير `docs/DOCUMENTS_SPACING_VALIDATION.md` يحمل بيانات v0.13.1 الحالية، وتقرير `docs/UI_REDESIGN_VALIDATION.md` يحفظ بيانات v0.13.0 السابقة وحدود الفحص.
 
-## 2026-09-26 — v0.13.1 Documents spacing follow-up (validation pending)
+## 2026-09-26 — v0.13.1 Documents spacing follow-up ready for phone testing
 
 - Owner likes v0.13.0 (9.5/10), but supplied a phone screenshot showing no separation between the open-file button and first document card.
 - Root cause: the action layout has only a top margin, and the card layout only a bottom margin. Added a local 16dp bottom margin to the Documents action; no shared spacing, file data, navigation, icons, package or signing-key change.
 - Added light/dark device checks for the actual 16dp boundary, unchanged 9dp inter-card spacing, aligned edges and 48dp button height.
-- New candidate version 0.13.1 / 17. Release/device CI and permanent signing must be verified before delivery; no new success claimed here.
-- Same draft PR #9 and existing plan. main unchanged; no merge approval.
+- Candidate version 0.13.1 / 17; tested source `187cf54d65a007349e185830f1af44bf283d6242`.
+- Release run `36273649564` succeeded through APK/AAB verification and artifact upload (`10916531389`). Device run `36273649560` succeeded with **44 assertions** and UI artifact `10915574979`.
+- Captured 14 real emulator screenshots; opened and visually reviewed the light/dark Documents screenshots for this focused fix.
+- Signed with the permanent key; v2/v3, same certificate as the prior v0.13.0 APK, packaged identity 0.13.1 / 17, ARM64 and ZIP integrity verified. Signed size: 18,228,538 bytes.
+- Signed SHA-256: `b126ebfc1fbdecc50fdb5ddb5f2b52fa426612b4e60b5d5857e45e8f8d6220c2`. Full provenance and limits: `docs/DOCUMENTS_SPACING_VALIDATION.md`.
+- Temporary source transport was removed before the tested source commit; final builds compile direct sources. Documentation updates do not change the signed APK.
+- Same draft PR #9 and existing plan. main unchanged; no merge approval. Updated physical-phone test remains pending.
 
 ## 2026-09-26 — v0.13.0 UI / UX candidate ready for phone testing
 
@@ -30,7 +35,7 @@
 - المصدر مباشر. ملفات نقل/patch مؤقتة خضعت لفحص hashes ثم أزيلت. فشل أول نقل بسبب صلاحية workflows؛ اقتصر Actions بعدها على مصدر التطبيق، وتغييرات workflow تمت عبر موصل GitHub المصرح. لا أسرار في المصدر أو ملفات النقل.
 - أزيلت خطوة حذف artifacts السابقة غير المرتبطة؛ لم تُحذف إصدارات أخرى.
 - التحديثات التوثيقية بعد المصدر المذكور لا تغير التطبيق المُسلّم. اختبار المحاكي لا يعادل تجربة ترقية الهاتف أو جميع الخدمات الخارجية وأحجام الخط؛ الحدود موثقة في التقرير.
-- **الحالة: مرشح موقّع جاهز للتجربة، غير مدمج. الخطوة التالية ملاحظات المستخدم وتجربة الهاتف ثم موافقة صريحة.**
+- **الحالة وقت التسليم السابق: مرشح موقّع جاهز للتجربة، غير مدمج. وردت ملاحظات المستخدم وعولجت في متابعة v0.13.1 أعلاه.**
 
 ## 2026-09-25 — v0.12.0 named code block titles + editor shortcut
 
@@ -42,7 +47,6 @@
 - إضافة parser مستقل لبيانات code fence مع تعقيم للعنوان واللغة ودعم escaped quotes.
 - إضافة اختصار **▣ حاوية بعنوان…** داخل **أدوات Markdown وHTML** بنفس تنسيق الأدوات الموجودة.
 - الاختصار يلف النص المحدد أو يدرج placeholder جاهزًا عند عدم وجود تحديد.
-- إضافة `MarkdownTransforms.titledFencedCode` مع fence ديناميكي للمحتوى الذي يحتوي backticks.
 - تحديث اختبارات Java وJavaScript وAssertions الخاصة بـ CI.
 - تحديث `README.md` و`PROJECT_MEMORY.md`.
 - GitHub Actions Run `36168040146`: **Success** بالكامل، بما في ذلك الاختبارات وبناء APK/AAB والتحقق ورفع Artifact.

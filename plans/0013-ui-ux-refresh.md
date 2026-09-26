@@ -1,9 +1,10 @@
-# v0.13.0 — UI / UX refresh
+# v0.13.0 — UI / UX refresh, with v0.13.1 spacing follow-up
 
-Status: original implementation and automated validation complete; owner likes the redesign (9.5/10) but reports missing separation between the Documents open button and first file card. Focused v0.13.1 follow-up in progress. **Not approved for merge or merged.**
+Status: owner likes the redesign (9.5/10). The reported Documents button/card spacing issue is fixed; v0.13.1 is built, tested and signed for an updated phone test. **Not approved for merge or merged.**
 Baseline: main `683c5c93ffe4674169039391e985bb9de2b24299` (v0.12.0, versionCode 15).
 Branch: `feature/ui-ux-refresh`; draft PR #9.
 Original tested source: `a5974fb6eae24d9adb6643f5bc9cce361118d6dd`.
+Current tested source: `187cf54d65a007349e185830f1af44bf283d6242` (v0.13.1 / code 17).
 
 ## Brief and decisions
 
@@ -25,7 +26,7 @@ Preserve all working functions and the permanent package/signature. Refresh exis
 - [x] Integrate supplied icon with adaptive/legacy resources and align preview colors.
 - [x] Address actual emulator findings, including cold IME and landscape viewport; extend compact handling to normal editing.
 - [x] Run all existing smoke suites plus 277 SearchMatchState checks, JS/XML/source contracts.
-- [x] Build and verify optimized ARM64 APK and separate AAB; Android UI run passed 32 assertions and produced 13 reviewed screenshots.
+- [x] Build and verify optimized ARM64 APK and separate AAB; original Android UI run passed 32 assertions and produced 13 reviewed screenshots.
 - [x] Sign candidate with permanent key, verify v2/v3/certificate and packaged identity.
 - [x] Update project memory, progress, README, layout-review and exact validation report.
 - [x] Prepare signed v0.13.0 candidate for owner phone testing.
@@ -39,19 +40,21 @@ Preserve all working functions and the permanent package/signature. Refresh exis
 - [x] Add a 16dp bottom margin specifically to the Documents open button. Do not change shared button/card margins, card internals, other tabs, app data, package or signature.
 - [x] Add real-layout regression checks for the gap, unchanged card spacing and 48dp touch target in light/dark Documents screens.
 - [x] Increment delivered version to 0.13.1 / 17, keeping workflow assertions and visible version strings consistent.
-- [ ] Run release and device CI against the exact new source; inspect actual device screenshots.
-- [ ] Sign and verify the update with the existing permanent key, update evidence and deliver the APK.
+- [x] Run release and device CI against the exact new source; inspect actual light/dark Documents screenshots. Release run `36273649564` and UI run `36273649560` succeeded; **44 runtime assertions** passed.
+- [x] Sign and verify the update with the existing permanent key, record exact evidence and prepare the APK for delivery. Details: `docs/DOCUMENTS_SPACING_VALIDATION.md`.
 
 This is an application code correction, not an image/mockup request. Use the same development branch and existing PR; no redesign restart and no merge without explicit owner approval.
 
 ## Evidence and scope
 
-`docs/UI_REDESIGN_VALIDATION.md` records the original source/run/artifact/hash; `docs/UI_LAYOUT_REVIEW.md` explains its findings. Release run `36269131631` and UI run `36269131647` passed for the original v0.13.0 source. Those results must not be presented as validation of the new fix.
+`docs/DOCUMENTS_SPACING_VALIDATION.md` records the current v0.13.1 source, runs, artifacts, signed APK hash and test limits. Fourteen actual emulator screenshots were captured; the two Documents screenshots were visually inspected for this focused fix.
 
-Dark/light and Arabic/English screens were reviewed. Keyboard, previous/next, multiline replacement/undo, rotation, navigation and several sheet types have runtime checks. Existing open/save/drafts, all formatting tools, outline/bookmarks, external translation/speech and large-document daily use still require owner acceptance; source preservation/smoke checks do not equal every end-to-end scenario. Full font-scale/OS/IME matrix remains unverified.
+`docs/UI_REDESIGN_VALIDATION.md` preserves the original v0.13.0 source/run/artifact/hash; `docs/UI_LAYOUT_REVIEW.md` explains its findings. Release run `36269131631` and UI run `36269131647` belong to that earlier source, not the current fix.
+
+Dark/light and Arabic/English screens were reviewed during the redesign. Keyboard, previous/next, multiline replacement/undo, rotation, navigation and several sheet types have runtime checks. Existing open/save/drafts, all formatting tools, outline/bookmarks, external translation/speech and large-document daily use still require owner acceptance; source preservation/smoke checks do not equal every end-to-end scenario. Full font-scale/OS/IME matrix remains unverified.
 
 ## Cleanup and next step
 
-Final release and UI builds must compile direct sources; remove any temporary source-transport workflow before building the delivered candidate. Unrelated old artifacts must not be deleted. Permanent applicationId/signature stay unchanged.
+Final release and UI builds compile direct sources; the temporary source-transport workflow was removed before the tested application-source commit. No unrelated old artifacts were deleted. Permanent applicationId/signature are unchanged.
 
-Complete only the focused follow-up, record exact new evidence, and wait for the owner's updated phone feedback. Do not call this candidate stable before phone acceptance and explicit merge approval.
+Wait for the owner's updated phone feedback. Do not call this candidate stable before phone acceptance and explicit merge approval.
