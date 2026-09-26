@@ -193,9 +193,20 @@ public class MainActivity extends Activity {
         if(top==null||findPanel==null||bottom==null||formatBar==null)return;
         int available=root.getHeight()-root.getPaddingTop()-root.getPaddingBottom();
         boolean searching=!homeMode&&searchBar.getVisibility()==View.VISIBLE;
-        boolean tight=searching&&available>0&&available<dp(300);
-        findPanel.setCompact(tight);top.setVisibility(tight?View.GONE:View.VISIBLE);
-        // Navigation of matches must leave a useful document viewport, even above the IME.
+        boolean tight=searching&&available>0&&available<dp(420);
+        // A tall landscape IME can leave under 100dp: share width, not scarce height.
+        boolean split=searching&&available>0&&available<dp(170)
+                &&root.getWidth()-root.getPaddingLeft()-root.getPaddingRight()>dp(600);
+        int orientation=split?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL;
+        if(root.getOrientation()!=orientation){
+            root.setOrientation(orientation);
+            searchBar.setLayoutParams(new LinearLayout.LayoutParams(split?dp(336):-1,split?-1:-2));
+            frame.setLayoutParams(new LinearLayout.LayoutParams(split?0:-1,split?-1:0,1));
+            ensureSearchVisible();
+        }
+        findPanel.setSideBySide(split);findPanel.setCompact(tight&&keyboardVisible);
+        top.setVisibility(tight?View.GONE:View.VISIBLE);
+        // Without IME, keep replacement options available while hiding secondary chrome.
         boolean focusSearch=searching&&(keyboardVisible||tight);
         bottom.setVisibility(homeMode||focusSearch?View.GONE:View.VISIBLE);
         formatBar.setVisibility(!homeMode&&editing&&!searching?View.VISIBLE:View.GONE);
