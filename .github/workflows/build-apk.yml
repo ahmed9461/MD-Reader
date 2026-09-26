@@ -1,4 +1,4 @@
-name: Build MD Reader v0.12.0 Release
+name: Build MD Reader v0.13.0 Release
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ on:
 
 permissions:
   contents: read
-  actions: write
+  actions: read
 
 jobs:
   release:
@@ -29,7 +29,7 @@ jobs:
       - name: Checkout normalized source
         uses: actions/checkout@v4
 
-      - name: Assert direct-source architecture and v0.12 features
+      - name: Assert direct-source architecture and v0.13 features
         shell: bash
         run: |
           set -euo pipefail
@@ -46,11 +46,14 @@ jobs:
           ! grep -q 'apply_editor_ux_v07.py' .github/workflows/build-apk.yml
           ! grep -q 'v0.5-mainactivity.patch' .github/workflows/build-apk.yml
           ! grep -q 'AdjustableScroller' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q "versionName '0.12.0'" app/build.gradle
-          grep -q "versionCode 15" app/build.gradle
+          grep -q "versionName '0.13.0'" app/build.gradle
+          grep -q "versionCode 16" app/build.gradle
           grep -q 'new FlingEditText(this)' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'setFlingSpeedPercent' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'boolean scrollable=aa!=null&&aa.length>7' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'ResponsiveSheet.show' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'new FindReplaceBar' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          test ! -e .github/workflows/ui-source-snapshot.yml
+          test ! -d .ui-review
           grep -q 'SOFT_INPUT_ADJUST_RESIZE' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'searchReplaceDialog' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'PREF_EDITOR_SCROLL' app/src/main/java/app/mdreader/mobile/MainActivity.java
@@ -63,7 +66,7 @@ jobs:
           grep -q 'previewIo=Executors.newSingleThreadExecutor' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'safeHtmlTools' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'customHtmlColor' app/src/main/java/app/mdreader/mobile/MainActivity.java
-          grep -q 'MD Reader 0.12.0' app/src/main/java/app/mdreader/mobile/MainActivity.java
+          grep -q 'MD Reader 0.13.0' app/src/main/java/app/mdreader/mobile/MainActivity.java
           grep -q 'html:true' app/src/main/assets/reader.html
           grep -q 'MDReaderSafeHtml.sanitize' app/src/main/assets/reader.html
           grep -q 'MDReaderCodeFence.parseInfo' app/src/main/assets/reader.html
@@ -118,18 +121,21 @@ jobs:
             app/src/main/java/app/mdreader/mobile/MarkdownTranslationPlan.java \
             app/src/main/java/app/mdreader/mobile/MarkdownSpeechPlan.java \
             app/src/main/java/app/mdreader/mobile/SearchReplaceEngine.java \
+            app/src/main/java/app/mdreader/mobile/SearchMatchState.java \
             app/src/main/java/app/mdreader/mobile/GitHubMarkdownSource.java \
             app/src/main/java/app/mdreader/mobile/SafeHtmlEditorTools.java \
             tools/TransformSmokeTest.java \
             tools/TranslationPlanSmokeTest.java \
             tools/SpeechPlanSmokeTest.java \
             tools/SearchReplaceSmokeTest.java \
+            tools/SearchMatchStateSmokeTest.java \
             tools/GitHubMarkdownSourceSmokeTest.java \
             tools/SafeHtmlEditorToolsSmokeTest.java
           java -cp build/smoke TransformSmokeTest
           java -cp build/smoke app.mdreader.mobile.TranslationPlanSmokeTest
           java -cp build/smoke app.mdreader.mobile.SpeechPlanSmokeTest
           java -cp build/smoke app.mdreader.mobile.SearchReplaceSmokeTest
+          java -cp build/smoke app.mdreader.mobile.SearchMatchStateSmokeTest
           java -cp build/smoke app.mdreader.mobile.GitHubMarkdownSourceSmokeTest
           java -cp build/smoke app.mdreader.mobile.SafeHtmlEditorToolsSmokeTest
 
@@ -191,6 +197,9 @@ jobs:
           print('Task, safe HTML, and large-document compatibility assertions passed.')
           PY
 
+      - name: Check UI source contracts
+        run: python3 tools/ui-contract-check.py
+
       - name: Build optimized ARM64 release APK
         shell: bash
         run: |
@@ -203,7 +212,7 @@ jobs:
             find app/build/outputs/apk -type f -print || true
             exit 1
           fi
-          cp "$ARM64_APK" dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk
+          cp "$ARM64_APK" dist/MD-Reader-v0.13.0-arm64-release-unsigned.apk
 
       - name: Build optimized App Bundle separately
         shell: bash
@@ -217,15 +226,15 @@ jobs:
             find app/build/outputs/bundle -type f -print || true
             exit 1
           fi
-          cp "$AAB" dist/MD-Reader-v0.12.0-release-unsigned.aab
+          cp "$AAB" dist/MD-Reader-v0.13.0-release-unsigned.aab
 
       - name: Verify optimized outputs
         shell: bash
         run: |
           set -euo pipefail
-          test -s dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk
-          test -s dist/MD-Reader-v0.12.0-release-unsigned.aab
-          unzip -l dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk > /tmp/apk-list.txt
+          test -s dist/MD-Reader-v0.13.0-arm64-release-unsigned.apk
+          test -s dist/MD-Reader-v0.13.0-release-unsigned.aab
+          unzip -l dist/MD-Reader-v0.13.0-arm64-release-unsigned.apk > /tmp/apk-list.txt
           grep -q 'lib/arm64-v8a/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86_64/libtranslate_jni.so' /tmp/apk-list.txt
           ! grep -q 'lib/x86/libtranslate_jni.so' /tmp/apk-list.txt
@@ -234,7 +243,7 @@ jobs:
           grep -q 'assets/js/mdreader-safe-html.js' /tmp/apk-list.txt
           grep -q 'assets/js/mdreader-code-fence.js' /tmp/apk-list.txt
           grep -q 'assets/reader.html' /tmp/apk-list.txt
-          unzip -l dist/MD-Reader-v0.12.0-release-unsigned.aab > /tmp/aab-list.txt
+          unzip -l dist/MD-Reader-v0.13.0-release-unsigned.aab > /tmp/aab-list.txt
           grep -q 'base/lib/arm64-v8a/libtranslate_jni.so' /tmp/aab-list.txt
           grep -q 'base/lib/armeabi-v7a/libtranslate_jni.so' /tmp/aab-list.txt
           mkdir -p dist/signing-tools/lib
@@ -243,10 +252,10 @@ jobs:
           chmod +x dist/signing-tools/apksigner
           sha256sum dist/*.apk dist/*.aab > dist/SHA256SUMS.txt
           {
-            echo "version=0.12.0"
-            echo "versionCode=14"
-            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk)"
-            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.12.0-release-unsigned.aab)"
+            echo "version=0.13.0"
+            echo "versionCode=16"
+            echo "arm64_apk_bytes=$(stat -c%s dist/MD-Reader-v0.13.0-arm64-release-unsigned.apk)"
+            echo "aab_bytes=$(stat -c%s dist/MD-Reader-v0.13.0-release-unsigned.aab)"
             echo "minified=true"
             echo "resources_shrunk=true"
             echo "apk_abi=arm64-v8a"
@@ -257,38 +266,20 @@ jobs:
           cat dist/release-info.txt
           cat dist/SHA256SUMS.txt
 
-      - name: Delete older MD Reader artifacts before upload
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
-            --jq '.artifacts[] | select(.expired == false) | [.id,.name] | @tsv' > /tmp/artifacts.tsv
-          while IFS=$'\t' read -r id name; do
-            [ -z "${id:-}" ] && continue
-            case "$name" in
-              MD-Reader-*)
-                echo "Deleting previous artifact: $name ($id)"
-                gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" || true
-                ;;
-            esac
-          done < /tmp/artifacts.tsv
-
       - name: Upload current ARM64 test package
         id: upload_release
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: MD-Reader-v0.12.0-arm64-unsigned
+          name: MD-Reader-v0.13.0-arm64-unsigned
           path: |
-            dist/MD-Reader-v0.12.0-arm64-release-unsigned.apk
+            dist/MD-Reader-v0.13.0-arm64-release-unsigned.apk
             dist/SHA256SUMS.txt
             dist/release-info.txt
             dist/signing-tools/apksigner
             dist/signing-tools/lib/apksigner.jar
           if-no-files-found: error
-          retention-days: 2
+          retention-days: 7
           compression-level: 0
 
       - name: Report artifact quota without failing validated build
