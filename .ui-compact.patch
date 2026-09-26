@@ -1,0 +1,34 @@
+--- a/app/src/main/java/app/mdreader/mobile/MainActivity.java
++++ b/app/src/main/java/app/mdreader/mobile/MainActivity.java
+@@ -193,7 +193,7 @@
+         if(top==null||findPanel==null||bottom==null||formatBar==null)return;
+         int available=root.getHeight()-root.getPaddingTop()-root.getPaddingBottom();
+         boolean searching=!homeMode&&searchBar.getVisibility()==View.VISIBLE;
+-        boolean tight=searching&&available>0&&available<dp(420);
++        boolean tight=!homeMode&&available>0&&available<dp(420)&&(searching||keyboardVisible);
+         // A tall landscape IME can leave under 100dp: share width, not scarce height.
+         boolean split=searching&&available>0&&available<dp(170)
+                 &&root.getWidth()-root.getPaddingLeft()-root.getPaddingRight()>dp(600);
+@@ -208,8 +208,8 @@
+         top.setVisibility(tight?View.GONE:View.VISIBLE);
+         // Without IME, keep replacement options available while hiding secondary chrome.
+         boolean focusSearch=searching&&(keyboardVisible||tight);
+-        bottom.setVisibility(homeMode||focusSearch?View.GONE:View.VISIBLE);
+-        formatBar.setVisibility(!homeMode&&editing&&!searching?View.VISIBLE:View.GONE);
++        bottom.setVisibility(homeMode||focusSearch||tight?View.GONE:View.VISIBLE);
++        formatBar.setVisibility(!homeMode&&editing&&!searching&&!tight?View.VISIBLE:View.GONE);
+     }
+     private void switchHomePage(int page){
+         if(!homeMode)return;homeScroll[homePage]=home.getScrollY();homePage=page;refreshHome();
+--- a/app/src/androidTest/java/app/mdreader/mobile/UiRegressionInstrumentation.java
++++ b/app/src/androidTest/java/app/mdreader/mobile/UiRegressionInstrumentation.java
+@@ -78,6 +78,9 @@
+                 check(p.replacement.isShown(),"expanded replacement remains available in short landscape");
+                 check(p.query.getHeight()>=dp(48)&&p.replacement.getHeight()>=dp(48),"landscape fields retain touch targets");
+             });shot("11-landscape-find");
++            ui(()->call("closeSearch"));pause();
++            ui(()->{EditText e=(EditText)field("editor");e.requestFocus();call("keyboard",new Class[]{View.class},e);});
++            waitForKeyboard();ui(()->check(((View)field("editor")).getHeight()>dp(60),"plain landscape editor remains visible above keyboard"));shot("11b-landscape-editor");
+             ui(()->{activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);call("closeSearch");});pause();
+             ui(()->call("translationSettings"));pause();assertCloseVisible();shot("12-translation-settings-dark");closeSheet();
+             result.putString("stream","UI_REGRESSION_PASS: "+assertions+" assertions; screenshots captured.\n");finish(Activity.RESULT_OK,result);
