@@ -72,7 +72,8 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             ui(()->{call("closeSearch");call("more");});pause();assertCloseVisible();shot("08-document-menu-dark");closeSheet();
             ui(()->call("titledCodeBlockTool"));pause();assertCloseVisible();shot("09-code-title-dialog-dark");closeSheet();
             ui(()->SpeechSettingsDialog.show(activity,(SpeechReader)field("speech")));pause();assertCloseVisible();shot("10-speech-settings-dark");closeSheet();
-            ui(()->{call("searchReplaceDialog");((EditText)field("searchInput")).setText("Q1");activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);});SystemClock.sleep(1600);waitForIdleSync();
+            ui(()->{call("searchReplaceDialog");((EditText)field("searchInput")).setText("Q1");activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);});
+            waitForLandscapeLayout();
             ui(()->{check(((EditText)field("editor")).getText().toString().equals(document),"rotation preserves document");View e=(View)field("editor");check(e.getHeight()>dp(60),"landscape leaves document viewport");
                 FindReplaceBar p=(FindReplaceBar)field("findPanel");int[] ep=new int[2],pp=new int[2];e.getLocationOnScreen(ep);p.getLocationOnScreen(pp);
                 check(ep[0]+e.getWidth()<=pp[0]||pp[0]+p.getWidth()<=ep[0],"short landscape search is beside document");
@@ -101,6 +102,49 @@ public final class UiRegressionInstrumentation extends Instrumentation {
         check(second.getTop()-first.getBottom()==dp(9),"existing 9dp inter-card gap preserved");
         check(open.getLeft()==first.getLeft()&&open.getRight()==first.getRight(),"button and cards stay horizontally aligned");
         check(open.getHeight()>=dp(48),"Documents open action retains 48dp touch target");
+    }
+    /** Wait for rotation/IME layout work, not for the assertions themselves to become true. */
+    private void waitForLandscapeLayout() throws Exception {
+        final long deadline=SystemClock.uptimeMillis()+10000;
+        final String[] geometry={null};
+        String previous=null;
+        long stableSince=0;
+        do {
+            waitForIdleSync();
+            ui(()->{
+                View decor=activity.getWindow().getDecorView();
+                View editor=(View)field("editor"),panel=(View)field("findPanel");
+                WindowInsets insets=decor.getRootWindowInsets();
+                boolean landscape=activity.getResources().getConfiguration().orientation
+                        ==android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+                if(!landscape||decor.getWidth()<=decor.getHeight()||insets==null
+                        ||!insets.isVisible(WindowInsets.Type.ime())
+                        ||insets.getInsets(WindowInsets.Type.ime()).bottom<=0
+                        ||decor.isLayoutRequested()||editor.isLayoutRequested()||panel.isLayoutRequested()){
+                    geometry[0]=null;
+                    return;
+                }
+                int[] e=new int[2],p=new int[2];
+                editor.getLocationOnScreen(e);panel.getLocationOnScreen(p);
+                geometry[0]=decor.getWidth()+"x"+decor.getHeight()+":"
+                        +insets.getInsets(WindowInsets.Type.ime()).bottom+":"
+                        +e[0]+","+e[1]+","+editor.getWidth()+","+editor.getHeight()+":"
+                        +p[0]+","+p[1]+","+panel.getWidth()+","+panel.getHeight();
+            });
+            long now=SystemClock.uptimeMillis();
+            if(geometry[0]!=null&&geometry[0].equals(previous)){
+                if(now-stableSince>=750){
+                    android.util.Log.i("MDReaderUiTest","LANDSCAPE_LAYOUT_STABLE: "+geometry[0]);
+                    check(true,"landscape and IME geometry settles within deadline");
+                    return;
+                }
+            }else{
+                previous=geometry[0];
+                stableSince=now;
+            }
+            SystemClock.sleep(100);
+        }while(SystemClock.uptimeMillis()<deadline);
+        check(false,"landscape/IME layout did not settle within 10s; last geometry="+geometry[0]);
     }
     private void waitForKeyboard() throws Exception {
         long deadline=SystemClock.uptimeMillis()+8000;final boolean[] visible={false};
