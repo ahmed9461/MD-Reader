@@ -1,6 +1,18 @@
 # MD Reader — Progress Log
 
-> سجل تقدم مكمل لـ `PROJECT_MEMORY.md`. تقرير `docs/DOCUMENTS_SPACING_VALIDATION.md` يحمل بيانات v0.13.1 الحالية، وتقرير `docs/UI_REDESIGN_VALIDATION.md` يحفظ بيانات v0.13.0 السابقة وحدود الفحص.
+> سجل تقدم مكمل لـ `PROJECT_MEMORY.md`. تقرير `docs/DOCUMENTS_SPACING_VALIDATION.md` يحمل بيانات تسليم v0.13.1، وتقرير `docs/UI_REDESIGN_VALIDATION.md` يحفظ بيانات v0.13.0 السابقة وحدود الفحص. الإدخالات المؤرخة أدناه تاريخية؛ الأحدث يحدد حالة الاعتماد.
+
+## 2026-09-27 — Owner accepts v0.13.1 and explicitly authorizes merge
+
+- After delivery of the signed spacing update, the owner said: **«كفو تم ادمج🫡❤»**. The v0.13.1 acceptance gate is satisfied; this is distinct from the earlier 9.5/10 feedback on v0.13.0.
+- PR #9 targets `main` from `feature/ui-ux-refresh`; it was open, draft and mergeable when integration started. Converted it to ready after explicit approval. PR #9's final state records the actual merge result.
+- Reviewed current PR metadata, reviews, source comparison and Actions. `187cf54` to `1ddf0fc` changes documentation only; the accepted application source and signed APK remain unchanged.
+- Release run `36274012848` on `1ddf0fc51b419f873ed78e398dd9847022250d3d` succeeded. UI run `36274012837` initially failed at `landscape leaves document viewport`; re-ran the failed job rather than claiming an older successful run covered current HEAD.
+- Downloaded the failed-run evidence artifact `10916771418` and inspected `failure.png`. It shows the intended side-by-side landscape layout after the screenshot's additional pause; the test uses a fixed 1600ms rotation wait. Timing instability remains a possible explanation, not a demonstrated production fix.
+- Updated README, project memory and the existing plan to record the owner's acceptance, remove obsolete candidate status from current sections, preserve historical delivery evidence and require future delivered versionCode > 17.
+- No production source, test assertion, package, signing key, file data, feature or delivered APK was changed in this adoption follow-up. No unrelated branch or artifact was deleted.
+- Final integration must use successful release and UI checks for the final relevant HEAD; record exact run IDs and merge SHA in PR #9. Do not bypass a failure merely because the owner approved merge.
+- The accepted v0.13.1 APK remains the same installed update. Documentation-only integration does not require a new APK or reinstallation. Owner acceptance does not imply every Android/font/keyboard/service combination was individually tested.
 
 ## 2026-09-26 — v0.13.1 Documents spacing follow-up ready for phone testing
 
