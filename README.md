@@ -2,9 +2,9 @@
 
 Native Android Markdown reader/editor with Arabic RTL and English LTR content support.
 
-## UI refresh candidate — v0.13.0
+## Owner-approved release — v0.13.1
 
-`feature/ui-ux-refresh` contains the UI candidate (versionCode 16). **main remains the phone-tested v0.12.0 / code 15. The candidate is not adopted or merged.**
+The owner accepted the signed v0.13.1 update and explicitly authorized merging PR #9 on 2026-09-27. This release includes the UI refresh and the Documents spacing correction (versionCode 17). PR #9 records the final checks and merge result; v0.12.0 / code 15 is the previous stable baseline.
 
 - Four library destinations: home, documents, favorites and settings.
 - Consistent native light/dark surfaces, orange accents, icons and accessible controls.
@@ -12,9 +12,10 @@ Native Android Markdown reader/editor with Arabic RTL and English LTR content su
 - In-layout find/replace: document stays visible, replacement controls expand on demand, previous/next reveal the selected result without focusing the editor.
 - Bounded sheets with a scrollable body and a persistent heading/close action.
 - The owner's supplied `.md` artwork is used for the adaptive/legacy launcher icon.
+- A 16dp gap separates the Documents open-file button from the first card; existing card spacing and touch targets are preserved.
 - No framework migration or new production UI dependency.
 
-See `PROJECT_MEMORY.md`, `plans/0013-ui-ux-refresh.md` and the candidate validation report under `docs/` for implementation and verification status. The complete pre-refresh memory is preserved verbatim in `docs/history/PROJECT_MEMORY-v0.12.0.md`.
+See `PROJECT_MEMORY.md`, `plans/0013-ui-ux-refresh.md` and `docs/DOCUMENTS_SPACING_VALIDATION.md` for implementation and delivery evidence. The complete pre-refresh memory is preserved verbatim in `docs/history/PROJECT_MEMORY-v0.12.0.md`.
 
 ## Existing capabilities retained
 
@@ -24,15 +25,16 @@ Single Enter remains a visible preview line break. Task answers retain their exp
 
 ## Architecture and checks
 
-Direct Java sources under `app/src/main`, plus the existing WebView renderer. Builds do not reconstruct sources or apply patches. Release CI checks pure Java smoke suites, JavaScript, HTML policy, UI source contracts, optimized ARM64 APK and a separately built multi-ABI AAB. Device CI uses a dependency-free instrumentation runner and an API 35 emulator; it produces actual UI screenshots and checks search visibility, keyboard/focus, replacement/undo, sheet dismissal and rotation. Emulator results do not replace owner phone acceptance.
+Direct Java sources under `app/src/main`, plus the existing WebView renderer. Builds do not reconstruct sources or apply patches. Release CI checks pure Java smoke suites, JavaScript, HTML policy, UI source contracts, optimized ARM64 APK and a separately built multi-ABI AAB. Device CI uses a dependency-free instrumentation runner and an API 35 emulator; it produces actual UI screenshots and checks search visibility, keyboard/focus, replacement/undo, sheet dismissal and rotation. Emulator results do not replace owner phone acceptance or prove every Android/keyboard/font-scale combination.
 
 ## Release identity
 
 - applicationId: `app.mdreader.mobile`
-- stable: versionName `0.12.0`, versionCode `15`
-- UI candidate: versionName `0.13.0`, versionCode `16`
+- Owner-approved release: versionName `0.13.1`, versionCode `17`
+- Previous stable release: versionName `0.12.0`, versionCode `15`
 - minSdk 26; compile/target 36
 - Permanent release signature; credentials stay outside Git.
+- A subsequent delivered update must use a versionCode greater than 17.
 
 ## Named code blocks — retained from v0.12.0
 
@@ -44,6 +46,6 @@ print("Hello")
 
 The shorthand `python:app.py` and ordinary fences are also supported. In **أدوات Markdown وHTML**, **▣ حاوية بعنوان…** wraps the selection or inserts a placeholder. The title may be Arabic or English and syntax-highlighting language is optional.
 
-## Phone acceptance before merge
+## Future update acceptance
 
-Install the signed candidate as an update without uninstalling the existing app. Check existing documents/favorites/drafts, open/save, both themes, the keyboard and previous/next search, multiline replacement and undo, long sheets, titled code tools, outline/bookmarks and portrait/landscape. Report issues with screenshots. Do not merge before explicit approval.
+Install signed updates without uninstalling the existing app. Check existing documents/favorites/drafts, open/save, both themes, the keyboard and previous/next search, multiline replacement and undo, long sheets, titled code tools, outline/bookmarks and portrait/landscape. Report issues with screenshots. Future releases still require their own explicit owner approval before merge; approval of v0.13.1 does not authorize unrelated changes.
