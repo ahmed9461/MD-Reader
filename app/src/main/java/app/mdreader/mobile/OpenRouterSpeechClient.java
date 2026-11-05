@@ -17,37 +17,40 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-final class OpenAiSpeechClient {
-    static final String MODEL = "gpt-4o-mini-tts";
-    static final String ENDPOINT = "https://api.openai.com/v1/audio/speech";
-    static final String DEFAULT_VOICE = "marin";
-    static final String[] VOICES = new String[]{"marin", "cedar", "coral", "alloy"};
+final class OpenRouterSpeechClient {
+    static final String DEFAULT_MODEL = "elevenlabs/eleven-flash-v2.5";
+    static final String MULTILINGUAL_MODEL = "elevenlabs/eleven-multilingual-v2";
+    static final String ENDPOINT = "https://openrouter.ai/api/v1/audio/speech";
+    static final String DEFAULT_VOICE = "sarah";
+    static final List<String> FEMALE_VOICES = Arrays.asList("sarah", "alice", "jessica", "laura", "lily");
+    static final List<String> MALE_VOICES = Arrays.asList("george", "brian", "daniel", "liam", "roger");
 
     private static final long MAX_CACHE_BYTES = 96L * 1024L * 1024L;
-    private static final String INSTRUCTIONS = "Read the supplied document text naturally and clearly. Use fluent Modern Standard Arabic for Arabic text and natural English pronunciation for English text. Preserve English technical terms as written. Do not translate, explain, add, omit, or paraphrase any content. Use calm pacing and brief natural pauses at punctuation and headings.";
 
     private final ApiKeyStore secrets;
     private final File cacheDir;
     private final ConcurrentHashMap<String, Object> keyLocks = new ConcurrentHashMap<>();
 
-    OpenAiSpeechClient(Context context) {
+    OpenRouterSpeechClient(Context context) {
         Context app = context.getApplicationContext();
         this.secrets = new ApiKeyStore(app);
+        // Reuse the cache directory so clearing it also removes pre-upgrade audio.
         this.cacheDir = new File(app.getCacheDir(), "openai-speech-v1");
         if (!cacheDir.exists()) cacheDir.mkdirs();
     }
 
-    boolean hasKey() { return secrets.hasKey(ApiKeyStore.PROVIDER_OPENAI); }
+    boolean hasKey() { return secrets.hasKey(ApiKeyStore.PROVIDER_OPENROUTER); }
 
-    File audio(String text, String voice, float speed) throws Exception {
+    File audio(String text, String model, String voice) throws Exception {
         String input = text == null ? "" : text.trim();
         if (input.isEmpty()) throw new IllegalArgumentException("لا يوجد نص لتوليد الصوت");
         if (input.length() > 4096) throw new IllegalArgumentException("مقطع الصوت أطول من الحد المسموح");
         String selectedVoice = normalizeVoice(voice);
-        float selectedSpeed = clampSpeed(speed);
-        String key = sha256(MODEL + "\n" + selectedVoice + "\n" + String.format(Locale.US, "%.2f", selectedSpeed) + "\n" + INSTRUCTIONS + "\n" + input);
+        String selectedModel = normalizeModel(model);
+        String key = sha256(selectedModel + "\n" + selectedVoice + "\n" + input);
         File target = new File(cacheDir, key + ".mp3");
         if (target.isFile() && target.length() > 1024) {
             target.setLastModified(System.currentTimeMillis());
@@ -61,7 +64,7 @@ final class OpenAiSpeechClient {
                     target.setLastModified(System.currentTimeMillis());
                     return target;
                 }
-                request(input, selectedVoice, selectedSpeed, target);
+                request(input, selectedModel, selectedVoice, target);
                 trimCache();
                 return target;
             }
@@ -84,23 +87,26 @@ final class OpenAiSpeechClient {
     }
 
     static String normalizeVoice(String value) {
-        if (value != null) for (String voice : VOICES) if (voice.equalsIgnoreCase(value.trim())) return voice;
-        return DEFAULT_VOICE;
+        String voice = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        return FEMALE_VOICES.contains(voice) || MALE_VOICES.contains(voice) ? voice : DEFAULT_VOICE;
     }
 
-    private void request(String input, String voice, float speed, File target) throws Exception {
-        String apiKey = secrets.load(ApiKeyStore.PROVIDER_OPENAI);
-        if (apiKey.isEmpty()) throw new IllegalStateException("أضف مفتاح OpenAI أولًا من إعدادات الترجمة");
+    static String normalizeModel(String model) {
+        return MULTILINGUAL_MODEL.equals(model) ? MULTILINGUAL_MODEL : DEFAULT_MODEL;
+    }
 
-        JSONObject body = new JSONObject()
-                .put("model", MODEL)
-                .put("voice", voice)
-                .put("input", input)
-                .put("instructions", INSTRUCTIONS)
-                .put("response_format", "mp3")
-                .put("speed", speed);
+    static JSONObject requestBody(String input, String model, String voice) throws org.json.JSONException {
+        return new JSONObject().put("model", normalizeModel(model)).put("voice", normalizeVoice(voice))
+                .put("input", input).put("response_format", "mp3");
+    }
 
+    private void request(String input, String model, String voice, File target) throws Exception {
+        String apiKey = secrets.load(ApiKeyStore.PROVIDER_OPENROUTER);
+        if (apiKey.isEmpty()) throw new IllegalStateException("أضف مفتاح OpenRouter أولًا من إعدادات الصوت أو الترجمة");
+
+        JSONObject body = requestBody(input, model, voice);
         HttpURLConnection connection = (HttpURLConnection) new URL(ENDPOINT).openConnection();
+        connection.setInstanceFollowRedirects(false);
         connection.setRequestMethod("POST");
         connection.setConnectTimeout(25000);
         connection.setReadTimeout(90000);
@@ -118,7 +124,11 @@ final class OpenAiSpeechClient {
             int status = connection.getResponseCode();
             if (status < 200 || status >= 300) {
                 String detail = readSmall(connection.getErrorStream());
-                throw new IllegalStateException(friendlyError(status, detail));
+                throw new IllegalStateException(friendlyError(status, detail).replace(apiKey, "••••"));
+            }
+            String type = connection.getContentType();
+            if (type != null && type.toLowerCase(Locale.ROOT).contains("json")) {
+                throw new IllegalStateException("أعاد OpenRouter رسالة بدلاً من ملف صوت");
             }
             File temp = new File(cacheDir, target.getName() + ".tmp-" + System.nanoTime());
             try (InputStream in = connection.getInputStream(); FileOutputStream out = new FileOutputStream(temp)) {
@@ -126,10 +136,13 @@ final class OpenAiSpeechClient {
                 int n;
                 while ((n = in.read(buffer)) != -1) out.write(buffer, 0, n);
                 out.getFD().sync();
+            } catch (Exception e) {
+                temp.delete();
+                throw e;
             }
             if (temp.length() < 1024) {
                 temp.delete();
-                throw new IllegalStateException("استجابة الصوت من OpenAI كانت فارغة أو غير مكتملة");
+                throw new IllegalStateException("استجابة الصوت من OpenRouter كانت فارغة أو غير مكتملة");
             }
             if (target.exists()) target.delete();
             if (!temp.renameTo(target)) {
@@ -182,14 +195,14 @@ final class OpenAiSpeechClient {
             JSONObject error = new JSONObject(raw).optJSONObject("error");
             if (error != null) message = error.optString("message", "");
         } catch (Exception ignored) {}
-        if (status == 401) return "مفتاح OpenAI غير صالح أو انتهت صلاحيته";
-        if (status == 429) return "تم تجاوز حد OpenAI أو الرصيد المتاح للصوت";
-        if (status >= 500) return "خدمة OpenAI الصوتية غير متاحة مؤقتًا";
-        if (!message.trim().isEmpty()) return "OpenAI: " + message.trim();
-        return "فشل توليد الصوت من OpenAI (HTTP " + status + ")";
+        if (status == 401) return "مفتاح OpenRouter غير صالح أو انتهت صلاحيته";
+        if (status == 402) return "رصيد OpenRouter غير كافٍ لتوليد الصوت";
+        if (status == 429) return "تم تجاوز حد OpenRouter أو الرصيد المتاح للصوت";
+        if (status >= 500) return "خدمة OpenRouter الصوتية غير متاحة مؤقتًا";
+        if (!message.trim().isEmpty()) return "OpenRouter: " + message.trim();
+        return "فشل توليد الصوت من OpenRouter (HTTP " + status + ")";
     }
 
-    private static float clampSpeed(float value) { return Math.max(0.5f, Math.min(2f, value)); }
 
     private static String sha256(String value) throws Exception {
         byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));

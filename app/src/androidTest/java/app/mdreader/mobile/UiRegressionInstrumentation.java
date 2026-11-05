@@ -78,7 +78,7 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             ui(()->((EditText)field("searchInput")).setText("not-present"));pause();ui(()->check(((FindReplaceBar)field("findPanel")).count.getText().toString().equals("لا توجد نتائج"),"zero-result state"));
             ui(()->{call("closeSearch");call("more");});pause();assertCloseVisible();shot("08-document-menu-dark");closeSheet();
             ui(()->call("titledCodeBlockTool"));pause();assertCloseVisible();shot("09-code-title-dialog-dark");closeSheet();
-            ui(()->SpeechSettingsDialog.show(activity,(SpeechReader)field("speech")));pause();assertCloseVisible();shot("10-speech-settings-dark");closeSheet();
+            ui(()->SpeechSettingsDialog.show(activity,(SpeechReader)field("speech")));pause();assertCloseVisible();shot("10-speech-settings-dark");checkVoicePicker();closeSheet();
             ui(()->{call("searchReplaceDialog");((EditText)field("searchInput")).setText("Q1");activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);});
             waitForLandscapeLayout();
             ui(()->{check(((EditText)field("editor")).getText().toString().equals(document),"rotation preserves document");View e=(View)field("editor");check(e.getHeight()>dp(60),"landscape leaves document viewport");
@@ -92,6 +92,7 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             waitForKeyboard();ui(()->check(((View)field("editor")).getHeight()>dp(60),"plain landscape editor remains visible above keyboard"));shot("11b-landscape-editor");
             ui(()->{activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);call("closeSearch");});pause();
             ui(()->call("translationSettings"));pause();assertCloseVisible();shot("12-translation-settings-dark");closeSheet();
+            ui(()->ProviderRegressionCheck.run(activity,(SpeechReader)field("speech"),this::check));
             result.putString("stream","UI_REGRESSION_PASS: "+assertions+" assertions; screenshots captured.\n");finish(Activity.RESULT_OK,result);
         }catch(Throwable e){android.util.Log.e("MDReaderUiTest","UI regression failure",e);result.putString("stream","UI_REGRESSION_FAIL: "+android.util.Log.getStackTraceString(e));try{shot("failure");}catch(Exception ignored){}finish(Activity.RESULT_CANCELED,result);}
     }
@@ -120,7 +121,7 @@ public final class UiRegressionInstrumentation extends Instrumentation {
                 xy[1]+=editor.getTotalPaddingTop()-editor.getScrollY()+(layout.getLineTop(line)+layout.getLineBottom(line))/2;
             });
             press(xy[0],xy[1],ViewConfiguration.getLongPressTimeout()+250);
-            Rect action=waitForSelectionAction(label);
+            Rect action=waitForVisibleLabel(label);
             ui(()->{
                 check(Math.min(editor.getSelectionStart(),editor.getSelectionEnd())==start
                         &&Math.max(editor.getSelectionStart(),editor.getSelectionEnd())==start+word.length(),"long-press selects the Arabic word");
@@ -136,7 +137,28 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             });
         }
     }
-    private Rect waitForSelectionAction(String label){
+    private void checkVoicePicker() throws Exception {
+        Rect selector = waitForVisibleLabel("اختيار الصوت · Sarah");
+        press(selector.centerX(),selector.centerY(),50);
+        pause();
+        for (String label : new String[]{"أصوات نسائية","Sarah","Alice","Jessica","Laura","Lily",
+                "أصوات رجالية","George","Brian","Daniel","Liam","Roger"}) {
+            check(!waitForVisibleLabel(label).isEmpty(), "visible voice picker item: "+label);
+        }
+        shot("10b-voice-picker-dark");
+        for (String choice : new String[]{"Lily","Roger"}) {
+            Rect option=waitForVisibleLabel(choice);
+            press(option.centerX(),option.centerY(),50);
+            pause();
+            ui(()->check(((SpeechReader)field("speech")).voice().equalsIgnoreCase(choice),"chosen voice: "+choice));
+            closeSheet();
+            ui(()->SpeechSettingsDialog.show(activity,(SpeechReader)field("speech")));
+            Rect saved=waitForVisibleLabel("اختيار الصوت · "+choice);
+            if ("Lily".equals(choice)) { press(saved.centerX(),saved.centerY(),50);pause(); }
+        }
+    }
+
+    private Rect waitForVisibleLabel(String label){
         long deadline=SystemClock.uptimeMillis()+6000;
         do {
             for(AccessibilityWindowInfo window:getUiAutomation().getWindows()){
@@ -152,7 +174,7 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             }
             SystemClock.sleep(100);
         }while(SystemClock.uptimeMillis()<deadline);
-        throw new AssertionError("Missing visible selection action: "+label);
+        throw new AssertionError("Missing visible label: "+label);
     }
     private void press(int x,int y,int duration){
         long down=SystemClock.uptimeMillis();
