@@ -23,7 +23,7 @@ assert 'WindowInsets.Type.ime()' in sheet
 assert 'ReaderUi.touch(c)' in sheet and 'CappedColumn' in sheet
 assert 'new ScrollView' in sheet
 for path in (root/'app/src/main').rglob('*.xml'):ET.parse(path)
-assert "versionCode 19" in (root/'app/build.gradle').read_text()
-assert "versionName '0.15.0'" in (root/'app/build.gradle').read_text()
+assert "versionCode 20" in (root/'app/build.gradle').read_text()
+assert "versionName '0.15.1'" in (root/'app/build.gradle').read_text()
 assert 'md-reader-release' not in '\n'.join(str(x) for x in root.glob('**/*.jks'))
 print('UI source contracts passed.')

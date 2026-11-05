@@ -60,6 +60,16 @@ final class ProviderRegressionCheck {
             JSONObject speech = OpenRouterSpeechClient.requestBody("مرحبا",reader.model(),"george");
             check.accept(speech.getString("model").equals(reader.model()) && speech.getString("voice").equals("george")
                     && speech.getString("response_format").equals("mp3") && !speech.has("speed"), "cloud TTS requests the chosen model, voice and playable format");
+            for (String model : new String[]{OpenRouterSpeechClient.DEFAULT_MODEL, OpenRouterSpeechClient.MULTILINGUAL_MODEL}) {
+                reader.setModel(model);
+                for (String voice : new String[]{"sarah","alice","jessica","laura","lily","george","brian","daniel","liam","roger"}) {
+                    reader.setVoice(voice);
+                    JSONObject request = OpenRouterSpeechClient.requestBody("مرحبا",reader.model(),reader.voice());
+                    check.accept(request.getString("voice").equals(voice) && request.getString("model").equals(model),
+                            "selected voice reaches "+model+": "+voice);
+                }
+            }
+            check.accept(OpenRouterSpeechClient.normalizeVoice("unknown").equals("sarah"),"unknown voice falls back to Sarah");
             keys.clear(router);
             reader.setEnginePreference(SpeechReader.ENGINE_AUTO);
             check.accept(reader.state().engine.equals(SpeechReader.ENGINE_DEVICE) && reader.state().model.isEmpty() && keys.hasKey(deep), "automatic device fallback has no cloud model and preserves DeepSeek");

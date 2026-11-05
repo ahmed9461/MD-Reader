@@ -16,6 +16,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.List;
 import java.util.Locale;
 
 final class SpeechSettingsDialog {
@@ -61,13 +62,8 @@ final class SpeechSettingsDialog {
         modelId.setTextDirection(View.TEXT_DIRECTION_LTR);
         root.addView(modelId, lp(-1, -2));
 
-        root.addView(section(activity, "الصوت", text), lp(-1, dp(activity, 34)));
-        LinearLayout voiceRow = row(activity);
-        TextView sarah = chip(activity, "Sarah", text);
-        TextView george = chip(activity, "George", text);
-        voiceRow.addView(sarah, weight(dp(activity, 48), 0, 4));
-        voiceRow.addView(george, weight(dp(activity, 48), 4, 0));
-        root.addView(voiceRow, lp(-1, -2));
+        TextView chooseVoice = action(activity, "", surface, text, false);
+        root.addView(chooseVoice, actionLp(activity));
 
         ApiKeyStore keys = new ApiKeyStore(activity);
         TextView keyStatus = text(activity, "", 13, muted, false);
@@ -107,9 +103,7 @@ final class SpeechSettingsDialog {
             styleChip(activity, flash, useFlash, accent, bg, border, text);
             styleChip(activity, multilingual, !useFlash, accent, bg, border, text);
             modelId.setText(reader.model());
-            boolean useSarah = "sarah".equals(reader.voice());
-            styleChip(activity, sarah, useSarah, accent, bg, border, text);
-            styleChip(activity, george, !useSarah, accent, bg, border, text);
+            chooseVoice.setText("اختيار الصوت · " + voiceName(reader.voice()));
             boolean hasKey = reader.hasOpenRouterKey();
             keyStatus.setText(hasKey ? "مفتاح OpenRouter محفوظ للصوت والترجمة" : "أضف مفتاح OpenRouter للصوت والترجمة");
             keyStatus.setTextColor(hasKey ? accent : muted);
@@ -122,8 +116,7 @@ final class SpeechSettingsDialog {
         device.setOnClickListener(v -> { reader.setEnginePreference(SpeechReader.ENGINE_DEVICE); refresh.run(); });
         flash.setOnClickListener(v -> { reader.setModel(OpenRouterSpeechClient.DEFAULT_MODEL); refresh.run(); });
         multilingual.setOnClickListener(v -> { reader.setModel(OpenRouterSpeechClient.MULTILINGUAL_MODEL); refresh.run(); });
-        sarah.setOnClickListener(v -> { reader.setVoice("sarah"); refresh.run(); });
-        george.setOnClickListener(v -> { reader.setVoice("george"); refresh.run(); });
+        chooseVoice.setOnClickListener(v -> showVoices(activity, reader, palette, refresh));
         saveKey.setOnClickListener(v -> {
             String entered = key.getText().toString().trim();
             if (entered.isEmpty()) { key.setError("أدخل مفتاح OpenRouter"); return; }
@@ -161,6 +154,42 @@ final class SpeechSettingsDialog {
 
         ResponsiveSheet.show(dialog,root,palette);
         refresh.run();
+    }
+
+    private static String voiceName(String slug) {
+        return Character.toUpperCase(slug.charAt(0)) + slug.substring(1);
+    }
+
+    private static void showVoices(Activity activity, SpeechReader reader, UiPalette palette, Runnable refresh) {
+        Dialog picker = new Dialog(activity);
+        picker.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout panel = ResponsiveSheet.panel(activity, "اختيار الصوت", palette);
+        LinearLayout columns = row(activity);
+        addVoiceColumn(activity, columns, "أصوات نسائية", OpenRouterSpeechClient.FEMALE_VOICES, reader, palette, picker, refresh);
+        addVoiceColumn(activity, columns, "أصوات رجالية", OpenRouterSpeechClient.MALE_VOICES, reader, palette, picker, refresh);
+        panel.addView(columns, lp(-1, -2));
+        ResponsiveSheet.show(picker, panel, palette);
+    }
+
+    private static void addVoiceColumn(Activity activity, LinearLayout columns, String title, List<String> voices,
+                                       SpeechReader reader, UiPalette palette, Dialog picker, Runnable refresh) {
+        LinearLayout column = ReaderUi.column(activity);
+        columns.addView(column, weight(-2, dp(activity, 3), dp(activity, 3)));
+        TextView heading = section(activity, title, palette.text);
+        heading.setGravity(Gravity.CENTER);
+        column.addView(heading, lp(-1, dp(activity, 36)));
+        for (String voice : voices) {
+            TextView option = chip(activity, voiceName(voice), palette.text);
+            styleChip(activity, option, voice.equals(reader.voice()), palette.accent, palette.background,
+                    palette.border, palette.text);
+            option.setMinHeight(dp(activity, 48));
+            option.setOnClickListener(v -> {
+                reader.setVoice(voice);
+                picker.dismiss();
+                refresh.run();
+            });
+            column.addView(option, actionLp(activity));
+        }
     }
 
     private static String cacheLabel(SpeechReader reader) {

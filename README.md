@@ -2,9 +2,11 @@
 
 Native Android Markdown reader/editor with Arabic RTL and English LTR content support.
 
-## OpenRouter speech and translation — v0.15.0 candidate (versionCode 19)
+## OpenRouter speech and translation — v0.15.1 (versionCode 20)
 
 Enter a personal OpenRouter API key once in the app. The online reader and OpenRouter translation share that encrypted key. The default translation model is `openai/gpt-4o-mini` and can be changed in translation settings. Speech offers `elevenlabs/eleven-flash-v2.5` and `elevenlabs/eleven-multilingual-v2`. The speech settings and player identify the speech model, and the translation result identifies the model that produced it. DeepSeek retains its separate translation key, model and endpoint. Local translation and device speech are available offline once their language resources are installed.
+
+In **إعدادات القراءة بالصوت**, open **اختيار الصوت**. Both speech models offer Sarah, Alice, Jessica, Laura and Lily in the first group and George, Brian, Daniel, Liam and Roger in the second. The app remembers the chosen voice across sessions and model changes.
 
 ## Editor selection tools — v0.14.0 (versionCode 18)
 
@@ -41,11 +43,11 @@ Direct Java sources under `app/src/main`, plus the existing WebView renderer. Bu
 ## Release identity
 
 - applicationId: `app.mdreader.mobile`
-- Owner-approved release: versionName `0.14.0`, versionCode `18` ([PR #10](https://github.com/ahmed9461/MD-Reader/pull/10))
-- Previous stable release: versionName `0.13.1`, versionCode `17`
+- Current release: versionName `0.15.1`, versionCode `20` ([PR #11](https://github.com/ahmed9461/MD-Reader/pull/11))
+- Previous stable release: versionName `0.14.0`, versionCode `18`
 - minSdk 26; compile/target 36
 - Permanent release signature; credentials stay outside Git.
-- A subsequent delivered update must use a versionCode greater than 18.
+- A subsequent delivered update must use a versionCode greater than 20.
 
 ## Named code blocks — retained from v0.12.0
 

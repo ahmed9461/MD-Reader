@@ -17,6 +17,7 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 final class OpenRouterSpeechClient {
@@ -24,7 +25,8 @@ final class OpenRouterSpeechClient {
     static final String MULTILINGUAL_MODEL = "elevenlabs/eleven-multilingual-v2";
     static final String ENDPOINT = "https://openrouter.ai/api/v1/audio/speech";
     static final String DEFAULT_VOICE = "sarah";
-    static final String[] VOICES = new String[]{"sarah", "george"};
+    static final List<String> FEMALE_VOICES = Arrays.asList("sarah", "alice", "jessica", "laura", "lily");
+    static final List<String> MALE_VOICES = Arrays.asList("george", "brian", "daniel", "liam", "roger");
 
     private static final long MAX_CACHE_BYTES = 96L * 1024L * 1024L;
 
@@ -85,8 +87,8 @@ final class OpenRouterSpeechClient {
     }
 
     static String normalizeVoice(String value) {
-        if (value != null) for (String voice : VOICES) if (voice.equalsIgnoreCase(value.trim())) return voice;
-        return DEFAULT_VOICE;
+        String voice = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        return FEMALE_VOICES.contains(voice) || MALE_VOICES.contains(voice) ? voice : DEFAULT_VOICE;
     }
 
     static String normalizeModel(String model) {
