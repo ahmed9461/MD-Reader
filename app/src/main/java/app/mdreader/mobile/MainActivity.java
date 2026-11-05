@@ -63,6 +63,8 @@ import java.util.concurrent.Executors;
 
 import org.json.JSONArray;
 
+import app.mdreader.mobile.EditorSelectionMenu.Format;
+
 public class MainActivity extends Activity {
     private static final int REQ_OPEN=1001, REQ_NEW=1002, REQ_SAVE_AS=1003;
     private static final String PREFS="md_reader_preferences", PREF_DARK="dark_mode", PREF_FONT="reader_font_size", PREF_EDITOR_SCROLL="editor_scroll_speed_percent";
@@ -218,12 +220,13 @@ public class MainActivity extends Activity {
 
     private void buildFormats(){
         format("↶",v->undo());format("↷",v->redo());divider(); format("H1",v->heading(1));format("H2",v->heading(2));format("H3",v->heading(3));divider();
-        format("B",v->wrap("**","**","نص"));format("I",v->wrap("*","*","نص"));format("S",v->wrap("~~","~~","نص"));format("` `",v->wrap("`","`","code"));format("```",v->apply(MarkdownTransforms.fencedCode(txt(),editor.getSelectionStart(),editor.getSelectionEnd())));divider();
+        format("B",v->apply(Format.BOLD.applyTo(editor)));format("I",v->apply(Format.ITALIC.applyTo(editor)));format("S",v->wrap("~~","~~","نص"));format("` `",v->wrap("`","`","code"));format("```",v->apply(MarkdownTransforms.fencedCode(txt(),editor.getSelectionStart(),editor.getSelectionEnd())));divider();
         format("❝",v->prefix("> ",false));format("•",v->prefix("- ",false));format("1.",v->prefix("",true));format("☑",v->setTaskState(false));divider();
         format("رابط",v->apply(MarkdownTransforms.link(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),false)));format("صورة",v->apply(MarkdownTransforms.link(txt(),editor.getSelectionStart(),editor.getSelectionEnd(),true)));format("جدول",v->insert("\n| العمود 1 | العمود 2 |\n| --- | --- |\n| قيمة 1 | قيمة 2 |\n"));format("—",v->insert("\n---\n"));format("HTML",v->safeHtmlTools());divider();format("ترجمة",v->translationMenu());
     }
 
     private void configureEditor(){
+        editor.setCustomSelectionActionModeCallback(new EditorSelectionMenu(editor,this::apply));
         history.reset(""); editor.addTextChangedListener(new Watcher(){@Override public void afterTextChanged(Editable s){
             if(suppress)return;
             if(s.length()>=LARGE_EDITOR_DEBOUNCE_CHARS){
@@ -423,8 +426,8 @@ public class MainActivity extends Activity {
 
     private void safeHtmlTools(){
         sheet("HTML آمن",
-                new Action("🖍 تظليل <mark>",()->apply(SafeHtmlEditorTools.highlight(txt(),editor.getSelectionStart(),editor.getSelectionEnd())),false),
-                new Action("U تسطير <u>",()->apply(SafeHtmlEditorTools.underline(txt(),editor.getSelectionStart(),editor.getSelectionEnd())),false),
+                new Action("🖍 تظليل <mark>",()->apply(Format.HIGHLIGHT.applyTo(editor)),false),
+                new Action("U تسطير <u>",()->apply(Format.UNDERLINE.applyTo(editor)),false),
                 new Action("A لون النص…",this::safeHtmlTextColorMenu,false),
                 new Action("▣ لون الخلفية…",this::safeHtmlBackgroundMenu,false),
                 new Action("↔ محاذاة…",this::safeHtmlAlignmentMenu,false),
@@ -821,7 +824,7 @@ public class MainActivity extends Activity {
     private void outline(){List<OutlineParser.Heading> hs=OutlineParser.parse(txt());if(hs.isEmpty()){Toast.makeText(this,"لا توجد عناوين في الملف",Toast.LENGTH_SHORT).show();return;}Dialog d=dialog();LinearLayout p=panel("فهرس المستند");ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);sc.addView(list);for(int i=0;i<hs.size();i++){int idx=i;OutlineParser.Heading h=hs.get(i);TextView r=sheetButton(repeat("   ",Math.max(0,h.level-1))+h.title,false);r.setOnClickListener(v->dismissSheet(d,p,()->{if(editing){jumpEditorOffset(Math.min(h.offset,editor.length()));}else preview.evaluateJavascript("window.scrollToHeading("+idx+");",null);}));list.addView(r,buttonLp());}p.addView(sc,new LinearLayout.LayoutParams(-1,0,1));TextView close=sheetButton("إغلاق",false);close.setOnClickListener(v->dismissSheet(d,p,null));p.addView(close,buttonLp());showDialog(d,p,true);}
     private void pdf(){if(homeMode)return;render();if(editing)setEditing(false);preview.postDelayed(()->{try{PrintManager pm=(PrintManager)getSystemService(Context.PRINT_SERVICE);PrintDocumentAdapter a=preview.createPrintDocumentAdapter(stripMd(currentName));pm.print(stripMd(currentName),a,null);}catch(Exception e){error("تعذر بدء التصدير",e);}},650);}
     private void share(){if(homeMode)return;if(currentUri==null||dirty){save(this::share);return;}Intent i=new Intent(Intent.ACTION_SEND);i.setType("text/markdown");i.putExtra(Intent.EXTRA_STREAM,currentUri);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);try{startActivity(Intent.createChooser(i,"مشاركة الملف"));}catch(Exception e){error("تعذر مشاركة الملف",e);}}
-    private void about(){message("MD Reader 0.13.1","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، عناوين مخصصة لحاويات الكود، طبقة HTML آمنة ومفلترة مع أدوات جاهزة للتظليل والألوان والمحاذاة والتفاصيل، مربعات الاختيار والإجابات الصحيحة المظللة، أدوات مباشرة لتحديد الإجابة الصحيحة وتوحيد مربعات الاختيار، معاينة محسنة للملفات الكبيرة، تنزيل ملفات Markdown العامة مباشرة من GitHub، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
+    private void about(){message("MD Reader 0.14.0","قارئ ومحرر Markdown يدعم العربية RTL والإنجليزية LTR، عناوين مخصصة لحاويات الكود، طبقة HTML آمنة ومفلترة مع أدوات جاهزة للتظليل والألوان والمحاذاة والتفاصيل، مربعات الاختيار والإجابات الصحيحة المظللة، أدوات مباشرة لتحديد الإجابة الصحيحة وتوحيد مربعات الاختيار، معاينة محسنة للملفات الكبيرة، تنزيل ملفات Markdown العامة مباشرة من GitHub، الملفات الأخيرة والمفضلة، استعادة المسودات، Mermaid، الترجمة، القراءة بالصوت، حفظ موضع القراءة والتحرير، التحكم بسرعة التمرير، البحث والاستبدال، والتنقل السريع والعلامات المرجعية.\n\nلا إعلانات • لا تحليلات • لا تتبع\n\nمفتاح API الشخصي يُحفظ مشفرًا على الجهاز.");}
 
     private void speechMenu(){
         List<Action>a=new ArrayList<>();

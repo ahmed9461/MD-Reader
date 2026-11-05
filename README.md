@@ -2,6 +2,13 @@
 
 Native Android Markdown reader/editor with Arabic RTL and English LTR content support.
 
+## Editor update candidate — v0.14.0 (versionCode 18)
+
+In **تحرير**, long-press a word and drag the handles to adjust the selection.
+Choose **تظليل**, **عريض**, **مائل** or **تسطير** from the floating toolbar.
+Clipboard actions and Select All are in its overflow when available.
+The editor shows the Markdown or HTML markup. Switch to **قراءة** to see the formatting, or tap **تراجع** to undo it.
+
 ## Owner-approved release — v0.13.1
 
 The owner accepted the signed v0.13.1 update and explicitly authorized merging PR #9 on 2026-09-27. This release includes the UI refresh and the Documents spacing correction (versionCode 17). PR #9 records the final checks and merge result; v0.12.0 / code 15 is the previous stable baseline.
