@@ -1,5 +1,6 @@
 package app.mdreader.mobile;
 
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Intent;
@@ -9,9 +10,14 @@ import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.text.Layout;
+import android.view.InputDevice;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.WindowInsets;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
 import android.widget.EditText;
 import android.widget.TextView;
 import java.io.File;
@@ -46,6 +52,7 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             ui(()->call("switchHomePage",new Class[]{int.class},3));pause();shot("04-settings-dark");
             ui(()->{set("currentName","دفتر الأفكار.md");call("setText",new Class[]{String.class,boolean.class},sample,true);call("showDocument");call("setEditing",new Class[]{boolean.class},false);});
             SystemClock.sleep(1600);waitForIdleSync();shot("05-reader-dark");
+            checkEditorSelectionActions();
             StringBuilder source=new StringBuilder("Q1 البداية\n");for(int i=0;i<80;i++)source.append("سطر ").append(i+1).append(" — نص تجريبي للقراءة والبحث.\n");source.append("Q1 النهاية\nq1 small\nألف\nباء\nألف\nباء");
             final String document=source.toString();
             ui(()->{call("setText",new Class[]{String.class,boolean.class},document,true);call("setEditing",new Class[]{boolean.class},true);call("searchReplaceDialog");((EditText)field("searchInput")).setText("Q1");});
@@ -87,6 +94,74 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             ui(()->call("translationSettings"));pause();assertCloseVisible();shot("12-translation-settings-dark");closeSheet();
             result.putString("stream","UI_REGRESSION_PASS: "+assertions+" assertions; screenshots captured.\n");finish(Activity.RESULT_OK,result);
         }catch(Throwable e){android.util.Log.e("MDReaderUiTest","UI regression failure",e);result.putString("stream","UI_REGRESSION_FAIL: "+android.util.Log.getStackTraceString(e));try{shot("failure");}catch(Exception ignored){}finish(Activity.RESULT_CANCELED,result);}
+    }
+    private void checkEditorSelectionActions() throws Exception {
+        // The floating toolbar may be a separate accessibility window from the editor.
+        AccessibilityServiceInfo info=getUiAutomation().getServiceInfo();
+        info.flags|=AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+        getUiAutomation().setServiceInfo(info);
+        String original="before\n\nمرحبا\n\nafter";
+        EditText editor=(EditText)field("editor");
+        ui(()->{
+            call("setEditing",new Class[]{boolean.class},true);
+            call("setText",new Class[]{String.class,boolean.class},original,true);
+            editor.requestFocus();call("keyboard",new Class[]{View.class},editor);
+        });
+        waitForKeyboard();
+        String word="مرحبا";
+        int start=original.indexOf(word);
+        for(String label:new String[]{"تظليل","عريض"}){
+            int[] xy=new int[2];
+            ui(()->{
+                Layout layout=editor.getLayout();
+                int offset=start+word.length()/2,line=layout.getLineForOffset(offset);
+                editor.getLocationOnScreen(xy);
+                xy[0]+=editor.getTotalPaddingLeft()-editor.getScrollX()+Math.round(layout.getPrimaryHorizontal(offset));
+                xy[1]+=editor.getTotalPaddingTop()-editor.getScrollY()+(layout.getLineTop(line)+layout.getLineBottom(line))/2;
+            });
+            press(xy[0],xy[1],ViewConfiguration.getLongPressTimeout()+250);
+            Rect action=waitForSelectionAction(label);
+            ui(()->{
+                check(Math.min(editor.getSelectionStart(),editor.getSelectionEnd())==start
+                        &&Math.max(editor.getSelectionStart(),editor.getSelectionEnd())==start+word.length(),"long-press selects the Arabic word");
+            });
+            if(label.equals("تظليل"))shot("05b-editor-selection-dark");
+            press(action.centerX(),action.centerY(),50);
+            pause();
+            ui(()->{
+                String wrapped=label.equals("تظليل")?"<mark>"+word+"</mark>":"**"+word+"**";
+                check(editor.getText().toString().equals(original.replace(word,wrapped)),label+" formats only the selection");
+                check(editor.hasFocus()&&editor.getRootWindowInsets().isVisible(WindowInsets.Type.ime()),"formatting preserves keyboard and editor focus");
+                call("undo");check(editor.getText().toString().equals(original),"one undo restores the selection edit");
+            });
+        }
+    }
+    private Rect waitForSelectionAction(String label){
+        long deadline=SystemClock.uptimeMillis()+6000;
+        do {
+            for(AccessibilityWindowInfo window:getUiAutomation().getWindows()){
+                AccessibilityNodeInfo root=window.getRoot();
+                if(root==null)continue;
+                for(AccessibilityNodeInfo node:root.findAccessibilityNodeInfosByText(label)){
+                    if(node.isVisibleToUser()&&(label.contentEquals(node.getText()==null?"":node.getText())
+                            ||label.contentEquals(node.getContentDescription()==null?"":node.getContentDescription()))){
+                        Rect bounds=new Rect();node.getBoundsInScreen(bounds);
+                        if(!bounds.isEmpty())return bounds;
+                    }
+                }
+            }
+            SystemClock.sleep(100);
+        }while(SystemClock.uptimeMillis()<deadline);
+        throw new AssertionError("Missing visible selection action: "+label);
+    }
+    private void press(int x,int y,int duration){
+        long down=SystemClock.uptimeMillis();
+        for(int action:new int[]{MotionEvent.ACTION_DOWN,MotionEvent.ACTION_UP}){
+            MotionEvent event=MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,x,y,0);
+            event.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+            try{check(getUiAutomation().injectInputEvent(event,true),"touch event injected");}finally{event.recycle();}
+            if(action==MotionEvent.ACTION_DOWN)SystemClock.sleep(duration);
+        }
     }
     private void assertDocumentsSpacing() throws Exception {
         android.widget.LinearLayout content=(android.widget.LinearLayout)field("homeContent");
