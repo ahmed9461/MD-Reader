@@ -15,14 +15,10 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
 final class ApiKeyStore {
-    static final String PROVIDER_OPENAI = "openai";
+    static final String PROVIDER_OPENROUTER = "openrouter";
     static final String PROVIDER_DEEPSEEK = "deepseek";
 
     private static final String STORE = "md_reader_secrets";
-    private static final String OPENAI_VALUE = "openai_api_key_ciphertext";
-    private static final String DEEPSEEK_VALUE = "deepseek_api_key_ciphertext";
-    private static final String OPENAI_ALIAS = "md_reader_openai_key_v1";
-    private static final String DEEPSEEK_ALIAS = "md_reader_deepseek_key_v1";
     private static final String ANDROID_KEY_STORE = "AndroidKeyStore";
     private final SharedPreferences prefs;
 
@@ -59,15 +55,13 @@ final class ApiKeyStore {
     synchronized void clear(String provider) { prefs.edit().remove(value(provider)).apply(); }
     String masked(String provider) { String key=load(provider); if(key.isEmpty()) return "غير محفوظ"; int tail=Math.min(4,key.length()); return "••••••••"+key.substring(key.length()-tail); }
 
-    synchronized void save(String apiKey) throws Exception { save(PROVIDER_OPENAI, apiKey); }
-    synchronized String load() { return load(PROVIDER_OPENAI); }
-    synchronized boolean hasKey() { return hasKey(PROVIDER_OPENAI); }
-    synchronized void clear() { clear(PROVIDER_OPENAI); }
-    String masked() { return masked(PROVIDER_OPENAI); }
+    private static String supportedProvider(String provider) {
+        if (PROVIDER_OPENROUTER.equals(provider) || PROVIDER_DEEPSEEK.equals(provider)) return provider;
+        throw new IllegalArgumentException("مزوّد API غير مدعوم");
+    }
 
-    private static boolean deepSeek(String provider) { return PROVIDER_DEEPSEEK.equals(provider); }
-    private static String value(String provider) { return deepSeek(provider) ? DEEPSEEK_VALUE : OPENAI_VALUE; }
-    private static String alias(String provider) { return deepSeek(provider) ? DEEPSEEK_ALIAS : OPENAI_ALIAS; }
+    private static String value(String provider) { return supportedProvider(provider) + "_api_key_ciphertext"; }
+    private static String alias(String provider) { return "md_reader_" + supportedProvider(provider) + "_key_v1"; }
 
     private SecretKey getOrCreateKey(String alias) throws Exception {
         KeyStore keyStore = KeyStore.getInstance(ANDROID_KEY_STORE); keyStore.load(null);

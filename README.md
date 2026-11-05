@@ -2,14 +2,18 @@
 
 Native Android Markdown reader/editor with Arabic RTL and English LTR content support.
 
-## Editor update candidate — v0.14.0 (versionCode 18)
+## OpenRouter speech and translation — v0.15.0 candidate (versionCode 19)
+
+Enter a personal OpenRouter API key once in the app. The online reader and OpenRouter translation share that encrypted key. The default translation model is `openai/gpt-4o-mini` and can be changed in translation settings. Speech offers `elevenlabs/eleven-flash-v2.5` and `elevenlabs/eleven-multilingual-v2`. The speech settings and player identify the speech model, and the translation result identifies the model that produced it. DeepSeek retains its separate translation key, model and endpoint. Local translation and device speech are available offline once their language resources are installed.
+
+## Editor selection tools — v0.14.0 (versionCode 18)
 
 In **تحرير**, long-press a word and drag the handles to adjust the selection.
 Choose **تظليل**, **عريض**, **مائل** or **تسطير** from the floating toolbar.
 Clipboard actions and Select All are in its overflow when available.
 The editor shows the Markdown or HTML markup. Switch to **قراءة** to see the formatting, or tap **تراجع** to undo it.
 
-## Owner-approved release — v0.13.1
+## Library and editor layout — v0.13.1
 
 The owner accepted the signed v0.13.1 update and explicitly authorized merging PR #9 on 2026-09-27. This release includes the UI refresh and the Documents spacing correction (versionCode 17). PR #9 records the final checks and merge result; v0.12.0 / code 15 is the previous stable baseline.
 
@@ -26,7 +30,7 @@ See `PROJECT_MEMORY.md`, `plans/0013-ui-ux-refresh.md` and `docs/DOCUMENTS_SPACI
 
 ## Existing capabilities retained
 
-Open, read, edit, save/Save As via Android SAF; per-block RTL/LTR; Markdown formatting and undo/redo; full literal Unicode multiline search/replace; outline, bookmarks and quick navigation; tables, code highlighting and Mermaid; safe HTML; sharing and Android Print/PDF; recents, favorites, drafts and reading/editor position; local ML Kit and configured AI translation; local speech and OpenAI TTS; kinetic editor scrolling with a 10–500% speed setting.
+Open, read, edit, save/Save As via Android SAF; per-block RTL/LTR; Markdown formatting and undo/redo; full literal Unicode multiline search/replace; outline, bookmarks and quick navigation; tables, code highlighting and Mermaid; safe HTML; sharing and Android Print/PDF; recents, favorites, drafts and reading/editor position; local ML Kit and configured AI translation; device speech and OpenRouter TTS; kinetic editor scrolling with a 10–500% speed setting.
 
 Single Enter remains a visible preview line break. Task answers retain their explicit checkmark and green highlight. There are no ads, analytics, tracking, account requirement or broad-storage permission.
 
@@ -37,11 +41,11 @@ Direct Java sources under `app/src/main`, plus the existing WebView renderer. Bu
 ## Release identity
 
 - applicationId: `app.mdreader.mobile`
-- Owner-approved release: versionName `0.13.1`, versionCode `17`
-- Previous stable release: versionName `0.12.0`, versionCode `15`
+- Owner-approved release: versionName `0.14.0`, versionCode `18` ([PR #10](https://github.com/ahmed9461/MD-Reader/pull/10))
+- Previous stable release: versionName `0.13.1`, versionCode `17`
 - minSdk 26; compile/target 36
 - Permanent release signature; credentials stay outside Git.
-- A subsequent delivered update must use a versionCode greater than 17.
+- A subsequent delivered update must use a versionCode greater than 18.
 
 ## Named code blocks — retained from v0.12.0
 
@@ -55,4 +59,4 @@ The shorthand `python:app.py` and ordinary fences are also supported. In **أد�
 
 ## Future update acceptance
 
-Install signed updates without uninstalling the existing app. Check existing documents/favorites/drafts, open/save, both themes, the keyboard and previous/next search, multiline replacement and undo, long sheets, titled code tools, outline/bookmarks and portrait/landscape. Report issues with screenshots. Future releases still require their own explicit owner approval before merge; approval of v0.13.1 does not authorize unrelated changes.
+Install signed updates without uninstalling the existing app. Check existing documents/favorites/drafts, open/save, both themes, the keyboard and previous/next search, multiline replacement and undo, long sheets, titled code tools, outline/bookmarks and portrait/landscape. Report issues with screenshots. Future releases still require their own explicit owner approval before merge.

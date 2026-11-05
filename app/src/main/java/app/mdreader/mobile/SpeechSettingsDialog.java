@@ -4,12 +4,14 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,31 +33,61 @@ final class SpeechSettingsDialog {
 
         LinearLayout root=ResponsiveSheet.panel(activity,"إعدادات الصوت",palette);
 
-        TextView note = text(activity, "صوت AI مُولَّد بالذكاء الاصطناعي عبر OpenAI. وضع «تلقائي» يستخدم AI عند وجود مفتاح OpenAI، وإلا يرجع لصوت الجهاز.", 13, muted, false);
+        root.setFocusableInTouchMode(true);
+        root.requestFocus();
+
+        TextView note = text(activity, "في الوضع التلقائي تُقرأ الفقرات عبر OpenRouter عند توفر مفتاحك. يستخدم التطبيق صوت الجهاز عند غياب المفتاح أو تعذّر القراءة السحابية.", 13, muted, false);
         note.setPadding(0, 0, 0, dp(activity, 12));
         root.addView(note, lp(-1, -2));
 
         root.addView(section(activity, "المحرك", text), lp(-1, dp(activity, 34)));
         LinearLayout engineRow = row(activity);
         TextView auto = chip(activity, "تلقائي", text);
-        TextView ai = chip(activity, "AI", text);
+        TextView ai = chip(activity, "OpenRouter", text);
         TextView device = chip(activity, "الجهاز", text);
         engineRow.addView(auto, weight(dp(activity, 48), 0, 4));
         engineRow.addView(ai, weight(dp(activity, 48), 4, 4));
         engineRow.addView(device, weight(dp(activity, 48), 4, 0));
         root.addView(engineRow, lp(-1, -2));
 
-        root.addView(section(activity, "صوت AI", text), lp(-1, dp(activity, 34)));
+        root.addView(section(activity, "نموذج القراءة عبر OpenRouter", text), lp(-1, dp(activity, 34)));
+        LinearLayout modelRow = row(activity);
+        TextView flash = chip(activity, "Flash v2.5", text);
+        TextView multilingual = chip(activity, "Multilingual v2", text);
+        modelRow.addView(flash, weight(dp(activity, 48), 0, 4));
+        modelRow.addView(multilingual, weight(dp(activity, 48), 4, 0));
+        root.addView(modelRow, lp(-1, -2));
+        TextView modelId = text(activity, reader.model(), 14, muted, false);
+        modelId.setTextDirection(View.TEXT_DIRECTION_LTR);
+        root.addView(modelId, lp(-1, -2));
+
+        root.addView(section(activity, "الصوت", text), lp(-1, dp(activity, 34)));
         LinearLayout voiceRow = row(activity);
-        TextView marin = chip(activity, "Marin", text);
-        TextView cedar = chip(activity, "Cedar", text);
-        voiceRow.addView(marin, weight(dp(activity, 48), 0, 4));
-        voiceRow.addView(cedar, weight(dp(activity, 48), 4, 0));
+        TextView sarah = chip(activity, "Sarah", text);
+        TextView george = chip(activity, "George", text);
+        voiceRow.addView(sarah, weight(dp(activity, 48), 0, 4));
+        voiceRow.addView(george, weight(dp(activity, 48), 4, 0));
         root.addView(voiceRow, lp(-1, -2));
 
-        TextView key = text(activity, reader.hasOpenAiKey() ? "✓ مفتاح OpenAI محفوظ — صوت AI جاهز" : "⚠ لا يوجد مفتاح OpenAI محفوظ. أضفه من إعدادات الترجمة.", 13, reader.hasOpenAiKey() ? accent : muted, false);
-        key.setPadding(dp(activity, 4), dp(activity, 8), dp(activity, 4), dp(activity, 12));
+        ApiKeyStore keys = new ApiKeyStore(activity);
+        TextView keyStatus = text(activity, "", 13, muted, false);
+        keyStatus.setPadding(0, dp(activity, 10), 0, dp(activity, 4));
+        root.addView(keyStatus, lp(-1, -2));
+        EditText key = new EditText(activity);
+        key.setSingleLine();
+        key.setHint("مفتاح OpenRouter");
+        key.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        key.setTextDirection(View.TEXT_DIRECTION_LTR);
+        key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
+        key.setSaveEnabled(false);
+        ReaderUi.field(key, palette);
         root.addView(key, lp(-1, -2));
+        LinearLayout keyRow = row(activity);
+        TextView saveKey = action(activity, "حفظ المفتاح", surface, text, false);
+        TextView clearKey = action(activity, "حذف المفتاح", surface, text, false);
+        keyRow.addView(saveKey, weight(dp(activity, 48), 0, 4));
+        keyRow.addView(clearKey, weight(dp(activity, 48), 4, 0));
+        root.addView(keyRow, lp(-1, -2));
 
         TextView test = action(activity, "▶ تجربة عربي + English", accent, palette.onAccent, true);
         root.addView(test, actionLp(activity));
@@ -71,22 +103,50 @@ final class SpeechSettingsDialog {
             styleChip(activity, auto, SpeechReader.ENGINE_AUTO.equals(engine), accent, bg, border, text);
             styleChip(activity, ai, SpeechReader.ENGINE_AI.equals(engine), accent, bg, border, text);
             styleChip(activity, device, SpeechReader.ENGINE_DEVICE.equals(engine), accent, bg, border, text);
-            String voice = reader.voice();
-            styleChip(activity, marin, "marin".equals(voice), accent, bg, border, text);
-            styleChip(activity, cedar, "cedar".equals(voice), accent, bg, border, text);
-            key.setText(reader.hasOpenAiKey() ? "✓ مفتاح OpenAI محفوظ — صوت AI جاهز" : "⚠ لا يوجد مفتاح OpenAI محفوظ. أضفه من إعدادات الترجمة.");
-            key.setTextColor(reader.hasOpenAiKey() ? accent : muted);
+            boolean useFlash = OpenRouterSpeechClient.DEFAULT_MODEL.equals(reader.model());
+            styleChip(activity, flash, useFlash, accent, bg, border, text);
+            styleChip(activity, multilingual, !useFlash, accent, bg, border, text);
+            modelId.setText(reader.model());
+            boolean useSarah = "sarah".equals(reader.voice());
+            styleChip(activity, sarah, useSarah, accent, bg, border, text);
+            styleChip(activity, george, !useSarah, accent, bg, border, text);
+            boolean hasKey = reader.hasOpenRouterKey();
+            keyStatus.setText(hasKey ? "مفتاح OpenRouter محفوظ للصوت والترجمة" : "أضف مفتاح OpenRouter للصوت والترجمة");
+            keyStatus.setTextColor(hasKey ? accent : muted);
+            clearKey.setEnabled(hasKey);
             cache.setText(cacheLabel(reader));
         };
 
         auto.setOnClickListener(v -> { reader.setEnginePreference(SpeechReader.ENGINE_AUTO); refresh.run(); });
         ai.setOnClickListener(v -> { reader.setEnginePreference(SpeechReader.ENGINE_AI); refresh.run(); });
         device.setOnClickListener(v -> { reader.setEnginePreference(SpeechReader.ENGINE_DEVICE); refresh.run(); });
-        marin.setOnClickListener(v -> { reader.setVoice("marin"); refresh.run(); });
-        cedar.setOnClickListener(v -> { reader.setVoice("cedar"); refresh.run(); });
+        flash.setOnClickListener(v -> { reader.setModel(OpenRouterSpeechClient.DEFAULT_MODEL); refresh.run(); });
+        multilingual.setOnClickListener(v -> { reader.setModel(OpenRouterSpeechClient.MULTILINGUAL_MODEL); refresh.run(); });
+        sarah.setOnClickListener(v -> { reader.setVoice("sarah"); refresh.run(); });
+        george.setOnClickListener(v -> { reader.setVoice("george"); refresh.run(); });
+        saveKey.setOnClickListener(v -> {
+            String entered = key.getText().toString().trim();
+            if (entered.isEmpty()) { key.setError("أدخل مفتاح OpenRouter"); return; }
+            try {
+                keys.save(ApiKeyStore.PROVIDER_OPENROUTER, entered);
+                key.setText("");
+                if (!reader.isActive()) reader.setEnginePreference(reader.enginePreference());
+                refresh.run();
+                Toast.makeText(activity, "تم حفظ مفتاح OpenRouter", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                key.setError("تعذر حفظ المفتاح على الجهاز");
+            }
+        });
+        clearKey.setOnClickListener(v -> {
+            keys.clear(ApiKeyStore.PROVIDER_OPENROUTER);
+            key.setText("");
+            if (reader.isActive() && SpeechReader.ENGINE_AI.equals(reader.effectiveEngine())) reader.stop();
+            if (!reader.isActive()) reader.setEnginePreference(reader.enginePreference());
+            refresh.run();
+        });
         test.setOnClickListener(v -> {
-            if (SpeechReader.ENGINE_AI.equals(reader.enginePreference()) && !reader.hasOpenAiKey()) {
-                Toast.makeText(activity, "أضف مفتاح OpenAI أولًا من إعدادات الترجمة", Toast.LENGTH_LONG).show();
+            if (SpeechReader.ENGINE_AI.equals(reader.enginePreference()) && !reader.hasOpenRouterKey()) {
+                Toast.makeText(activity, "أدخل مفتاح OpenRouter واضغط «حفظ المفتاح»", Toast.LENGTH_LONG).show();
                 return;
             }
             reader.testVoice();

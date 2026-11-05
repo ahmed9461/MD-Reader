@@ -34,20 +34,21 @@ final class SpeechReader {
         final String text;
         final boolean arabic;
         final float rate;
-        final String engine, voice;
-        State(boolean ready, boolean active, boolean paused, boolean preparing, int index, int total, String text, boolean arabic, float rate, String engine, String voice) {
+        final String engine, voice, model;
+        State(boolean ready, boolean active, boolean paused, boolean preparing, int index, int total, String text, boolean arabic, float rate, String engine, String voice, String model) {
             this.ready = ready; this.active = active; this.paused = paused; this.preparing = preparing;
-            this.index = index; this.total = total; this.text = text; this.arabic = arabic; this.rate = rate; this.engine = engine; this.voice = voice;
+            this.index = index; this.total = total; this.text = text; this.arabic = arabic; this.rate = rate; this.engine = engine; this.voice = voice; this.model = model;
         }
     }
 
     private static final String PREF_RATE = "tts_speech_rate";
     private static final String PREF_ENGINE = "speech_engine_v2";
-    private static final String PREF_AI_VOICE = "speech_ai_voice_v1";
+    private static final String PREF_AI_VOICE = "speech_openrouter_voice";
+    private static final String PREF_AI_MODEL = "speech_openrouter_model";
 
     private final SharedPreferences prefs;
     private final Listener listener;
-    private final OpenAiSpeechClient aiClient;
+    private final OpenRouterSpeechClient aiClient;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService network = Executors.newFixedThreadPool(2);
 
@@ -65,7 +66,7 @@ final class SpeechReader {
     SpeechReader(Context context, SharedPreferences prefs, Listener listener) {
         this.prefs = prefs;
         this.listener = listener;
-        this.aiClient = new OpenAiSpeechClient(context);
+        this.aiClient = new OpenRouterSpeechClient(context);
         this.rate = clampRate(prefs.getFloat(PREF_RATE, 1f));
         this.engine = resolveEngine();
         tts = new TextToSpeech(context.getApplicationContext(), status -> {
@@ -97,7 +98,7 @@ final class SpeechReader {
         engine = resolveEngine();
         if (ENGINE_AI.equals(engine) && !aiClient.hasKey()) {
             active = false;
-            error("أضف مفتاح OpenAI أولًا من إعدادات الترجمة لاستخدام صوت AI");
+            error("أضف مفتاح OpenRouter أولًا من إعدادات الصوت أو الترجمة");
             notifyState();
             return;
         }
@@ -119,7 +120,7 @@ final class SpeechReader {
         paused = false;
         if (ENGINE_AI.equals(engine)) {
             try {
-                if (player != null && aiPrepared) player.start();
+                if (player != null && aiPrepared) startPlayer(player);
                 else if (!aiLoading) speakAiCurrent();
             } catch (Exception e) { failAi(generation, index, e); }
         } else {
@@ -155,7 +156,12 @@ final class SpeechReader {
         rate = clampRate(value);
         prefs.edit().putFloat(PREF_RATE, rate).apply();
         if (tts != null && ttsReady) tts.setSpeechRate(rate);
-        if (active) {
+        if (active && ENGINE_AI.equals(engine)) {
+            if (player != null && aiPrepared && !paused) {
+                try { player.setPlaybackParams(player.getPlaybackParams().setSpeed(rate)); }
+                catch (Exception e) { failAi(generation, index, e); }
+            }
+        } else if (active) {
             haltPlayback();
             offset = 0; paused = false; generation++; preparing = false;
             speakCurrent();
@@ -177,23 +183,36 @@ final class SpeechReader {
         if (active) {
             haltPlayback(); offset = 0; paused = false; preparing = false; generation++;
             if (ENGINE_AI.equals(engine) && !aiClient.hasKey()) {
-                active = false; error("أضف مفتاح OpenAI أولًا لاستخدام صوت AI");
+                active = false; error("أضف مفتاح OpenRouter أولًا لاستخدام صوت AI");
             } else speakCurrent();
         }
         notifyState();
     }
 
-    synchronized String voice() { return OpenAiSpeechClient.normalizeVoice(prefs.getString(PREF_AI_VOICE, OpenAiSpeechClient.DEFAULT_VOICE)); }
+    synchronized String model() {
+        return OpenRouterSpeechClient.normalizeModel(prefs.getString(PREF_AI_MODEL, OpenRouterSpeechClient.DEFAULT_MODEL));
+    }
+    synchronized void setModel(String value) {
+        String next = OpenRouterSpeechClient.normalizeModel(value);
+        if (!next.equals(model())) { prefs.edit().putString(PREF_AI_MODEL, next).apply(); onVoiceChanged(); }
+    }
+
+    synchronized String voice() { return OpenRouterSpeechClient.normalizeVoice(prefs.getString(PREF_AI_VOICE, OpenRouterSpeechClient.DEFAULT_VOICE)); }
     synchronized void setVoice(String value) {
-        String next = OpenAiSpeechClient.normalizeVoice(value);
+        String next = OpenRouterSpeechClient.normalizeVoice(value);
+        if (next.equals(voice())) return;
         prefs.edit().putString(PREF_AI_VOICE, next).apply();
+        onVoiceChanged();
+    }
+
+    private void onVoiceChanged() {
         if (active && ENGINE_AI.equals(engine)) {
             haltPlayback(); offset = 0; paused = false; preparing = false; generation++; speakCurrent();
         }
         notifyState();
     }
 
-    synchronized boolean hasOpenAiKey() { return aiClient.hasKey(); }
+    synchronized boolean hasOpenRouterKey() { return aiClient.hasKey(); }
     synchronized long aiCacheBytes() { return aiClient.cacheBytes(); }
     synchronized void clearAiCache() { aiClient.clearCache(); notifyState(); }
     synchronized void testVoice() {
@@ -241,24 +260,29 @@ final class SpeechReader {
         if (!active || paused || closed || blocks.isEmpty()) return;
         if (!aiClient.hasKey()) {
             active = false; preparing = false;
-            error("أضف مفتاح OpenAI أولًا من إعدادات الترجمة لاستخدام صوت AI");
+            error("أضف مفتاح OpenRouter أولًا من إعدادات الصوت أو الترجمة");
             notifyState(); return;
         }
         final int targetIndex = index;
         final long token = generation;
         final MarkdownSpeechPlan.Block block = blocks.get(targetIndex);
         final String selectedVoice = voice();
-        final float selectedRate = rate;
+        final String selectedModel = model();
         aiLoading = true; preparing = true; aiPrepared = false;
         notifyState();
         network.execute(() -> {
             try {
-                File audio = aiClient.audio(block.text, selectedVoice, selectedRate);
+                File audio = aiClient.audio(block.text, selectedModel, selectedVoice);
                 main.post(() -> playAiFile(token, targetIndex, audio));
             } catch (Exception e) {
                 main.post(() -> failAi(token, targetIndex, e));
             }
         });
+    }
+
+    private void startPlayer(MediaPlayer mp) {
+        mp.setPlaybackParams(mp.getPlaybackParams().setSpeed(rate));
+        mp.start();
     }
 
     private synchronized void playAiFile(long token, int targetIndex, File audio) {
@@ -273,7 +297,7 @@ final class SpeechReader {
                     if (closed || token != generation || targetIndex != index || !active || player != mp) { safeRelease(mp); return; }
                     aiLoading = false; preparing = false; aiPrepared = true;
                     if (!paused) {
-                        try { mp.start(); } catch (Exception e) { failAi(token, targetIndex, e); return; }
+                        try { startPlayer(mp); } catch (Exception e) { failAi(token, targetIndex, e); return; }
                     }
                     notifyState();
                     prefetch(targetIndex + 1, token);
@@ -298,10 +322,10 @@ final class SpeechReader {
     private void prefetch(int nextIndex, long token) {
         if (nextIndex < 0 || nextIndex >= blocks.size() || closed || !ENGINE_AI.equals(engine)) return;
         MarkdownSpeechPlan.Block block = blocks.get(nextIndex);
-        String selectedVoice = voice(); float selectedRate = rate;
+        String selectedVoice = voice(); String selectedModel = model();
         network.execute(() -> {
             try {
-                if (!closed && token == generation) aiClient.audio(block.text, selectedVoice, selectedRate);
+                if (!closed && token == generation) aiClient.audio(block.text, selectedModel, selectedVoice);
             } catch (Exception ignored) {}
         });
     }
@@ -310,7 +334,7 @@ final class SpeechReader {
         if (closed || token != generation || targetIndex != index) return;
         aiLoading = false; aiPrepared = false; preparing = false;
         releasePlayer();
-        String message = failure == null || failure.getMessage() == null ? "تعذر توليد الصوت من OpenAI" : failure.getMessage();
+        String message = failure == null || failure.getMessage() == null ? "تعذر توليد الصوت من OpenRouter" : failure.getMessage();
         if (ENGINE_AUTO.equals(enginePreference())) {
             engine = ENGINE_DEVICE;
             error("تعذر صوت AI، وتم الانتقال تلقائيًا إلى صوت الجهاز.\n\n" + message);
@@ -383,7 +407,7 @@ final class SpeechReader {
         String text = blocks.isEmpty() || index < 0 || index >= blocks.size() ? "" : blocks.get(index).text;
         boolean ar = !blocks.isEmpty() && index >= 0 && index < blocks.size() && blocks.get(index).arabic;
         boolean ready = ENGINE_AI.equals(engine) ? aiClient.hasKey() : ttsReady;
-        return new State(ready, active, paused, preparing, blocks.isEmpty() ? 0 : index, blocks.size(), text, ar, rate, engine, voice());
+        return new State(ready, active, paused, preparing, blocks.isEmpty() ? 0 : index, blocks.size(), text, ar, rate, engine, voice(), ENGINE_AI.equals(engine) ? model() : "");
     }
 
     private void notifyState() { if (listener != null) listener.onState(makeState()); }

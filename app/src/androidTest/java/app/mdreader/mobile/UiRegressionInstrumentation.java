@@ -92,6 +92,7 @@ public final class UiRegressionInstrumentation extends Instrumentation {
             waitForKeyboard();ui(()->check(((View)field("editor")).getHeight()>dp(60),"plain landscape editor remains visible above keyboard"));shot("11b-landscape-editor");
             ui(()->{activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);call("closeSearch");});pause();
             ui(()->call("translationSettings"));pause();assertCloseVisible();shot("12-translation-settings-dark");closeSheet();
+            ui(()->ProviderRegressionCheck.run(activity,(SpeechReader)field("speech"),this::check));
             result.putString("stream","UI_REGRESSION_PASS: "+assertions+" assertions; screenshots captured.\n");finish(Activity.RESULT_OK,result);
         }catch(Throwable e){android.util.Log.e("MDReaderUiTest","UI regression failure",e);result.putString("stream","UI_REGRESSION_FAIL: "+android.util.Log.getStackTraceString(e));try{shot("failure");}catch(Exception ignored){}finish(Activity.RESULT_CANCELED,result);}
     }
